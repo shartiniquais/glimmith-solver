@@ -91,7 +91,7 @@ Manual `cut`/`join` edge constraints are handled by `edgeConstraintsRule`. They 
 
 Candidate generation lives in `src/core/candidates.js`. Pairwise/global incompatibility storage lives in `src/core/constraints.js`.
 
-`buildCandidateGenerationPlan(puzzle, context)` is the candidate-source extension point. Today it chooses reusable Shape Bank placements or fixed-area Precision regions. Step 02 rules such as Area Number and Polyomino should extend that source plan or add local candidate filters there, without adding rule-specific logic to the exact-cover search.
+`buildCandidateGenerationPlan(puzzle, context)` is the candidate-source extension point. Today it chooses reusable Shape Bank placements, fixed-area Precision regions, Area Number clue areas, or Polyomino clue shapes. Future rules should extend that source plan or add local candidate filters there, without adding rule-specific logic to the exact-cover search.
 
 ## Validation
 

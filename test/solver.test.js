@@ -87,6 +87,85 @@ test("generic Difference relation filters candidate pairs", () => {
   assert.deepEqual(result.solutions[0].regions.map((region) => region.cells), [[0], [1, 2]]);
 });
 
+test("Area Number clues can source and filter candidates", () => {
+  const puzzle = createPuzzle(3, 1);
+  puzzle.rules.area = 0;
+  puzzle.clues = [
+    { id: "one", type: "cell", ruleId: "area_number", value: 1, location: { type: "cell", cell: 0 } },
+    { id: "two", type: "cell", ruleId: "area_number", value: 2, location: { type: "cell", cell: 1 } }
+  ];
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "unique_solution");
+  assert.deepEqual(result.solutions[0].regions.map((region) => region.cells), [[0], [1, 2]]);
+});
+
+test("Precision and Area Number can prove an impossible puzzle", () => {
+  const puzzle = createPuzzle(2, 1);
+  puzzle.rules.area = 2;
+  puzzle.clues = [{ id: "one", type: "cell", ruleId: "area_number", value: 1, location: { type: "cell", cell: 0 } }];
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "no_solution");
+});
+
+test("Polyomino clues can source and filter shape candidates", () => {
+  const puzzle = createPuzzle(2, 2);
+  puzzle.rules.area = 0;
+  puzzle.rules.polyomino = { allowRotations: false, allowReflections: false };
+  puzzle.clues = [
+    {
+      id: "vertical_domino",
+      type: "cell",
+      ruleId: "polyomino",
+      location: { type: "cell", cell: 0 },
+      params: { shape: [[0, 0], [0, 1]] }
+    }
+  ];
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "unique_solution");
+  assert.deepEqual(result.solutions[0].regions.map((region) => region.cells), [[0, 2], [1, 3]]);
+});
+
+test("Polyomino rejects impossible clue shapes", () => {
+  const puzzle = createPuzzle(2, 1);
+  puzzle.rules.area = 0;
+  puzzle.clues = [
+    {
+      id: "too_large",
+      type: "cell",
+      ruleId: "polyomino",
+      location: { type: "cell", cell: 0 },
+      params: { shape: [[0, 0], [1, 0], [2, 0]] }
+    }
+  ];
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "no_solution");
+});
+
+test("Shape Bank and Gemini interact through configurable shape comparison", () => {
+  let puzzle = createPuzzle(2, 2);
+  puzzle.rules.area = 2;
+  puzzle.rules.shapeBankText = "I2: 0,0 1,0";
+  puzzle = setEdgeRelation(puzzle, 0, 1, "sameShape");
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "unique_solution");
+  assert.deepEqual(result.solutions[0].regions.map((region) => region.cells), [[0, 2], [1, 3]]);
+});
+
+test("Shape Bank and Delta can prove no solution", () => {
+  let puzzle = createPuzzle(2, 2);
+  puzzle.rules.area = 2;
+  puzzle.rules.shapeBankText = "I2: 0,0 1,0";
+  puzzle = setEdgeRelation(puzzle, 0, 1, "differentShape");
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "no_solution");
+});
+
 test("next-step explainer finds a forced join", () => {
   const puzzle = createPuzzle(2, 2);
   puzzle.rules.area = 4;

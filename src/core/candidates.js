@@ -10,7 +10,9 @@ import {
 } from "./geometry.js";
 import { parseShapeBank } from "./puzzle.js";
 import { candidateShapeForComparison } from "./shape-comparison.js";
+import { areaNumberCandidateAreas } from "./rules/area-number.js";
 import { edgeConstraintsRule } from "./rules/edge-constraints.js";
+import { polyominoCandidateShapes } from "./rules/polyomino.js";
 import { applyCandidateFilters, createRuleContext } from "./rules/registry.js";
 
 const DEFAULT_MAX_CANDIDATES = 80000;
@@ -24,8 +26,12 @@ export function generateCandidates(puzzle, options = {}) {
 
   if (plan.kind === "shape_bank") {
     raw.push(...generateShapePlacementCandidates(puzzle, plan.shapes, maxCandidates));
+  } else if (plan.kind === "polyomino_clues") {
+    raw.push(...generateShapePlacementCandidates(puzzle, plan.shapes, maxCandidates));
   } else if (plan.kind === "fixed_area") {
     raw.push(...generateConnectedCandidates(puzzle, plan.area, maxCandidates));
+  } else if (plan.kind === "area_number_clues") {
+    raw.push(...generateConnectedCandidatesForAreas(puzzle, plan.areas, maxCandidates));
   } else {
     errors.push("Set a Precision area or provide a shape bank before solving.");
   }
@@ -71,10 +77,28 @@ export function buildCandidateGenerationPlan(puzzle, context = createRuleContext
     };
   }
 
-  // Extension point for Step 02:
-  // area_number and polyomino can provide bounded candidate sources here once
-  // their solver modules are implemented. Keep this as a source plan instead
-  // of hardcoding those clue mechanics inside the exact-cover search.
+  const polyominoShapes = polyominoCandidateShapes(context);
+  if (polyominoShapes.length > 0) {
+    return {
+      kind: "polyomino_clues",
+      ruleId: "polyomino",
+      shapes: polyominoShapes,
+      errors
+    };
+  }
+
+  const areaNumberAreas = areaNumberCandidateAreas(context);
+  if (areaNumberAreas.length > 0) {
+    return {
+      kind: "area_number_clues",
+      ruleId: "area_number",
+      areas: areaNumberAreas,
+      errors
+    };
+  }
+
+  // Extension point for future rules: add candidate sources here and keep
+  // rule-specific candidate generation out of the exact-cover search.
   return {
     kind: "missing_source",
     ruleId: null,
@@ -179,6 +203,21 @@ function generateConnectedCandidates(puzzle, targetArea, maxCandidates) {
       if (candidates.length >= maxCandidates) return;
     }
   }
+}
+
+function generateConnectedCandidatesForAreas(puzzle, targetAreas, maxCandidates) {
+  const candidates = [];
+  const seen = new Set();
+  for (const area of targetAreas) {
+    for (const candidate of generateConnectedCandidates(puzzle, area, maxCandidates - candidates.length)) {
+      const key = candidate.mask.toString();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      candidates.push(candidate);
+      if (candidates.length >= maxCandidates) return candidates;
+    }
+  }
+  return candidates;
 }
 
 function shapeBankEntriesForGeneration(puzzle) {

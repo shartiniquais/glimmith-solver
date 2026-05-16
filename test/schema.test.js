@@ -107,7 +107,7 @@ test("validation distinguishes unknown, ready-unimplemented, and blocked rules",
   });
   assert.match(unknown.errors.join("\n"), /Unknown rule id "imaginary_rule"/);
 
-  for (const id of ["area_number", "polyomino", "mingle_shape"]) {
+  for (const id of ["mingle_shape"]) {
     const result = validatePuzzle({
       width: 1,
       height: 1,
@@ -121,6 +121,28 @@ test("validation distinguishes unknown, ready-unimplemented, and blocked rules",
       new RegExp(`Rule "${id}" is known and ready for implementation, but not implemented in the solver yet\\.`),
     );
   }
+
+  const areaNumber = validatePuzzle({
+    width: 1,
+    height: 1,
+    clues: [{ id: "area_1", type: "cell", ruleId: "area_number", value: 1, location: { type: "cell", cell: 0 } }]
+  });
+  assert.equal(areaNumber.ok, true);
+
+  const polyomino = validatePuzzle({
+    width: 1,
+    height: 1,
+    clues: [
+      {
+        id: "mono",
+        type: "cell",
+        ruleId: "polyomino",
+        location: { type: "cell", cell: 0 },
+        params: { shape: [[0, 0]] }
+      }
+    ]
+  });
+  assert.equal(polyomino.ok, true);
 
   for (const id of ["palisade", "bricky", "loopy", "compass", "watchtower"]) {
     const result = validatePuzzle({

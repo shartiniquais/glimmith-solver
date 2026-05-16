@@ -1,4 +1,6 @@
+import { areaNumberRule } from "./area-number.js";
 import { deltaRule, differenceRule, geminiRule } from "./relations.js";
+import { polyominoRule } from "./polyomino.js";
 import { precisionRule } from "./precision.js";
 import { roseWindowRule } from "./rose-window.js";
 import { shapeBankRule } from "./shape-bank.js";
@@ -25,9 +27,7 @@ const experimentalRules = [
 ];
 
 const readyNotImplementedRules = [
-  ["polyomino", "Polyomino"],
-  ["mingle_shape", "Mingle Shape"],
-  ["area_number", "Area Number"]
+  ["mingle_shape", "Mingle Shape"]
 ];
 
 const blockedRules = [
@@ -45,6 +45,8 @@ export const RULE_REGISTRY = Object.freeze({
   gemini: geminiRule,
   delta: deltaRule,
   difference: differenceRule,
+  area_number: areaNumberRule,
+  polyomino: polyominoRule,
   ...Object.fromEntries(readyNotImplementedRules.map(([id, label]) => [id, unimplementedRule(id, label, "ready")])),
   ...Object.fromEntries(experimentalRules.map(([id, label]) => [id, unimplementedRule(id, label, "experimental")])),
   ...Object.fromEntries(blockedRules.map(([id, label]) => [id, unimplementedRule(id, label, "blocked")]))
