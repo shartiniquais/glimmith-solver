@@ -185,6 +185,27 @@ test("Mingle Shape falls back to global reflection setting without override", ()
   assert.equal(model.invalidPairs.get(0)?.has(1), true);
 });
 
+test("Mingle Shape rule-specific reflection false overrides global true", () => {
+  const puzzle = normalizePuzzle({
+    width: 6,
+    height: 2,
+    rules: {
+      mingle_shape: { allowReflections: false },
+      shapeEquivalenceAllowReflections: true
+    }
+  });
+  const candidates = [
+    { ...candidate([1, 2, 6, 7], 6), id: 0 },
+    { ...candidate([3, 4, 10, 11], 6), id: 1 }
+  ];
+  const context = createRuleContext(puzzle, { candidates });
+  const model = createConstraintModel();
+
+  mingleShapeRule.addConstraints(model, context);
+
+  assert.equal(model.invalidPairs.size, 0);
+});
+
 function assertInvalidPairs(rule, ruleId, cluePatch, candidates, expectedPairs) {
   const puzzle = normalizePuzzle({
     width: 3,

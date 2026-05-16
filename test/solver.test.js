@@ -206,9 +206,21 @@ test("Mingle Shape allows non-adjacent duplicate shapes", () => {
 });
 
 test("Mingle Shape respects reflection equivalence", () => {
+  const withoutReflections = solvePuzzle(mirroredMinglePuzzle({ allowReflections: false }), { limit: 2 });
+  assert.equal(withoutReflections.status, "unique_solution");
+  assert.deepEqual(withoutReflections.solutions[0].regions.map((region) => region.cells), [
+    [1, 2, 6, 7],
+    [3, 4, 10, 11]
+  ]);
+
+  const withReflections = solvePuzzle(mirroredMinglePuzzle({ allowReflections: true }), { limit: 2 });
+  assert.equal(withReflections.status, "no_solution");
+});
+
+function mirroredMinglePuzzle(mingleConfig) {
   let puzzle = createPuzzle(6, 2);
   puzzle.rules.area = 4;
-  puzzle.rules.mingle_shape = { allowReflections: true };
+  puzzle.rules.mingle_shape = mingleConfig;
   puzzle.rules.shapeEquivalenceAllowReflections = false;
   puzzle.active = [
     false, true, true, true, true, false,
@@ -222,10 +234,8 @@ test("Mingle Shape respects reflection equivalence", () => {
   puzzle = setEdgeState(puzzle, 4, 10, "join");
   puzzle = setEdgeState(puzzle, 10, 11, "join");
   puzzle = setEdgeState(puzzle, 2, 3, "cut");
-
-  const result = solvePuzzle(puzzle, { limit: 2 });
-  assert.equal(result.status, "no_solution");
-});
+  return puzzle;
+}
 
 test("Polyomino clue placement uses clue reflection settings", () => {
   const basePuzzle = createPuzzle(3, 3);
