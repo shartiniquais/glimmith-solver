@@ -1,11 +1,29 @@
-import { activeCellIndexes, hasBit, maskFromIndexes, parseEdgeKey } from "./geometry.js";
-import { generateCandidates, candidateShapeForComparison } from "./candidates.js";
+import { createConstraintModel } from "./constraints.js";
+import { activeCellIndexes, hasBit, maskFromIndexes } from "./geometry.js";
+import { normalizePuzzle } from "./puzzle.js";
+import { generateCandidates } from "./candidates.js";
+import { addRuleConstraints, createRuleContext } from "./rules/registry.js";
+import { candidateShapeForComparison } from "./shape-comparison.js";
+import { validatePuzzle } from "./validation.js";
 
-export function solvePuzzle(puzzle, options = {}) {
+export function solvePuzzle(rawPuzzle, options = {}) {
+  const validation = validatePuzzle(rawPuzzle);
+  const puzzle = validation.puzzle ?? normalizePuzzle(rawPuzzle);
   const limit = Math.max(1, options.limit ?? 2);
   const maxNodes = Math.max(1, options.maxNodes ?? 250000);
   const activeCells = activeCellIndexes(puzzle);
   const fullMask = maskFromIndexes(activeCells);
+
+  if (!validation.ok) {
+    return {
+      status: "no_solution",
+      solutions: [],
+      errors: validation.errors,
+      candidates: [],
+      nodeCount: 0,
+      truncated: false
+    };
+  }
 
   if (activeCells.length === 0) {
     return {
@@ -18,7 +36,9 @@ export function solvePuzzle(puzzle, options = {}) {
     };
   }
 
-  const { candidates, errors } = generateCandidates(puzzle, options);
+  let context = createRuleContext(puzzle, options);
+  const { candidates, errors } = generateCandidates(puzzle, { ...options, context });
+  context = createRuleContext(puzzle, { ...options, candidates });
   const candidatesByCell = Array.from({ length: puzzle.width * puzzle.height }, () => []);
   for (const candidate of candidates) {
     for (const cell of candidate.cells) candidatesByCell[cell].push(candidate);
@@ -37,7 +57,9 @@ export function solvePuzzle(puzzle, options = {}) {
     }
   }
 
-  const invalidPairs = buildInvalidPairConstraints(puzzle, candidates);
+  const constraintModel = createConstraintModel();
+  addRuleConstraints(constraintModel, context);
+  const invalidPairs = constraintModel.invalidPairs;
   const solutions = [];
   let nodeCount = 0;
   let hitNodeLimit = false;
@@ -118,40 +140,12 @@ export function solvePuzzle(puzzle, options = {}) {
   }
 }
 
-function buildInvalidPairConstraints(puzzle, candidates) {
-  const invalidPairs = new Map();
-
-  for (const [key, constraint] of Object.entries(puzzle.edges ?? {})) {
-    if (!constraint.relation) continue;
-    const [a, b] = parseEdgeKey(key);
-    const aCandidates = candidates.filter((candidate) => hasBit(candidate.mask, a) && !hasBit(candidate.mask, b));
-    const bCandidates = candidates.filter((candidate) => hasBit(candidate.mask, b) && !hasBit(candidate.mask, a));
-
-    for (const left of aCandidates) {
-      for (const right of bCandidates) {
-        const sameShape = candidateShapeForComparison(puzzle, left) === candidateShapeForComparison(puzzle, right);
-        const valid = constraint.relation === "sameShape" ? sameShape : !sameShape;
-        if (!valid) addInvalidPair(invalidPairs, left.id, right.id);
-      }
-    }
-  }
-
-  return invalidPairs;
-}
-
-function addInvalidPair(invalidPairs, a, b) {
-  if (!invalidPairs.has(a)) invalidPairs.set(a, new Set());
-  if (!invalidPairs.has(b)) invalidPairs.set(b, new Set());
-  invalidPairs.get(a).add(b);
-  invalidPairs.get(b).add(a);
-}
-
 function makeSolution(puzzle, candidates) {
   const regions = candidates.map((candidate, index) => ({
     id: index + 1,
     cells: [...candidate.cells],
     area: candidate.area,
-    shapeKey: puzzle.rules.shapeEquivalenceAllowReflections ? candidate.shapeKeyWithReflections : candidate.shapeKey,
+    shapeKey: candidateShapeForComparison(puzzle, candidate),
     source: candidate.source,
     sourceName: candidate.sourceName
   }));

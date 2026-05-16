@@ -66,6 +66,27 @@ test("different-shape relation can prove no solution", () => {
   assert.equal(result.status, "no_solution");
 });
 
+test("generic Difference relation filters candidate pairs", () => {
+  const puzzle = createPuzzle(3, 1);
+  puzzle.rules.area = 0;
+  puzzle.rules.shapeBankText = "M1: 0,0\nI2: 0,0 1,0";
+  puzzle.clues = [
+    {
+      id: "difference_0_1",
+      type: "relation",
+      ruleId: "difference",
+      value: 1,
+      location: { type: "outside", side: "top" },
+      regionRefs: [{ cell: 0 }, { cell: 1 }]
+    }
+  ];
+  puzzle.rules.difference = {};
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "unique_solution");
+  assert.deepEqual(result.solutions[0].regions.map((region) => region.cells), [[0], [1, 2]]);
+});
+
 test("next-step explainer finds a forced join", () => {
   const puzzle = createPuzzle(2, 2);
   puzzle.rules.area = 4;

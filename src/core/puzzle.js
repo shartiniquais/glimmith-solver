@@ -3,68 +3,81 @@ import { edgeKey, idx, normalizeShape, parseEdgeKey } from "./geometry.js";
 export const EDGE_STATES = [null, "cut", "join"];
 export const EDGE_RELATIONS = [null, "sameShape", "differentShape"];
 
+const LEGACY_RULE_FIELDS = new Set([
+  "area",
+  "roseLabels",
+  "shapeBankText",
+  "allowRotations",
+  "allowReflections",
+  "shapeEquivalenceAllowRotations",
+  "shapeEquivalenceAllowReflections"
+]);
+
+const RELATION_RULE_BY_EDGE_RELATION = {
+  sameShape: "gemini",
+  differentShape: "delta"
+};
+
 export function createPuzzle(width = 6, height = 6) {
-  const active = Array.from({ length: width * height }, () => true);
-  return {
+  const size = width * height;
+  return normalizePuzzle({
+    version: 2,
     width,
     height,
-    active,
+    activeCells: Array.from({ length: size }, (_, index) => index),
     symbols: {},
-    edges: {},
+    clues: [],
+    edgeConstraints: {},
     rules: {
       area: 4,
       roseLabels: "",
       shapeBankText: "",
       allowRotations: true,
       allowReflections: false,
+      shapeEquivalenceAllowRotations: true,
       shapeEquivalenceAllowReflections: false
-    }
-  };
+    },
+    shapeBank: {
+      text: ""
+    },
+    metadata: {}
+  });
 }
 
 export function clonePuzzle(puzzle) {
   return JSON.parse(JSON.stringify(puzzle));
 }
 
-export function normalizePuzzle(raw) {
+export function normalizePuzzle(raw = {}) {
   const width = Math.max(1, Number(raw.width) || 1);
   const height = Math.max(1, Number(raw.height) || 1);
   const size = width * height;
-  const active = Array.from({ length: size }, (_, index) => raw.active?.[index] !== false);
+  const activeCells = normalizeActiveCells(raw, size);
+  const activeSet = new Set(activeCells);
+  const active = Array.from({ length: size }, (_, index) => activeSet.has(index));
+  const rules = normalizeRules(raw);
+  const shapeBank = normalizeShapeBank(raw, rules);
+  const symbols = normalizeSymbols(raw.symbols, size, activeSet);
+  const edgeConstraints = normalizeEdgeConstraints(raw.edgeConstraints ?? raw.edges, size, activeSet);
+  const clues = normalizeClues(raw.clues, size, activeSet);
+
+  addLegacyRelationClues(clues, edgeConstraints);
+  inferRelationRules(rules, clues);
 
   const puzzle = {
+    version: 2,
     width,
     height,
+    activeCells,
     active,
-    symbols: {},
-    edges: {},
-    rules: {
-      area: Math.max(0, Number(raw.rules?.area) || 0),
-      roseLabels: String(raw.rules?.roseLabels ?? "").toUpperCase().replace(/[^A-Z0-9]/g, ""),
-      shapeBankText: String(raw.rules?.shapeBankText ?? ""),
-      allowRotations: raw.rules?.allowRotations !== false,
-      allowReflections: raw.rules?.allowReflections === true,
-      shapeEquivalenceAllowReflections: raw.rules?.shapeEquivalenceAllowReflections === true
-    }
+    symbols,
+    clues,
+    edgeConstraints,
+    edges: edgeConstraints,
+    rules,
+    shapeBank,
+    metadata: normalizeMetadata(raw.metadata)
   };
-
-  for (const [key, value] of Object.entries(raw.symbols ?? {})) {
-    const index = Number(key);
-    const symbol = String(value ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-    if (Number.isInteger(index) && index >= 0 && index < size && active[index] && symbol) {
-      puzzle.symbols[index] = symbol.slice(0, 3);
-    }
-  }
-
-  for (const [key, value] of Object.entries(raw.edges ?? {})) {
-    const [a, b] = parseEdgeKey(key);
-    if (!Number.isInteger(a) || !Number.isInteger(b)) continue;
-    if (a < 0 || b < 0 || a >= size || b >= size) continue;
-    if (!active[a] || !active[b]) continue;
-    const state = value?.state === "join" || value?.state === "cut" ? value.state : null;
-    const relation = value?.relation === "sameShape" || value?.relation === "differentShape" ? value.relation : null;
-    if (state || relation) puzzle.edges[edgeKey(a, b)] = { state, relation };
-  }
 
   return puzzle;
 }
@@ -72,9 +85,15 @@ export function normalizePuzzle(raw) {
 export function resizePuzzle(puzzle, width, height) {
   const next = createPuzzle(width, height);
   next.rules = { ...puzzle.rules };
+  next.shapeBank = { ...puzzle.shapeBank };
+  next.metadata = { ...puzzle.metadata };
+  next.edgeConstraints = { ...puzzle.edgeConstraints };
+  next.edges = next.edgeConstraints;
+  next.clues = (puzzle.clues ?? []).map((clue) => ({ ...clue }));
 
   const minW = Math.min(puzzle.width, width);
   const minH = Math.min(puzzle.height, height);
+  next.active.fill(false);
   for (let y = 0; y < minH; y += 1) {
     for (let x = 0; x < minW; x += 1) {
       const oldIndex = idx(x, y, puzzle.width);
@@ -83,12 +102,14 @@ export function resizePuzzle(puzzle, width, height) {
       if (puzzle.symbols[oldIndex]) next.symbols[newIndex] = puzzle.symbols[oldIndex];
     }
   }
+  next.activeCells = next.active.map((isActive, index) => (isActive ? index : -1)).filter((index) => index >= 0);
   return normalizePuzzle(next);
 }
 
 export function toggleCellActive(puzzle, index) {
   const next = clonePuzzle(puzzle);
   next.active[index] = !next.active[index];
+  next.activeCells = next.active.map((isActive, cell) => (isActive ? cell : -1)).filter((cell) => cell >= 0);
   if (!next.active[index]) delete next.symbols[index];
   return normalizePuzzle(next);
 }
@@ -107,26 +128,32 @@ export function cycleCellSymbol(puzzle, index, symbols = ["", "A", "B", "C", "D"
 export function setEdgeState(puzzle, a, b, state) {
   const next = clonePuzzle(puzzle);
   const key = edgeKey(a, b);
-  const current = next.edges[key] ?? { state: null, relation: null };
+  const constraints = { ...(next.edgeConstraints ?? next.edges ?? {}) };
+  const current = constraints[key] ?? { state: null, relation: null };
   current.state = state;
-  if (!current.state && !current.relation) delete next.edges[key];
-  else next.edges[key] = current;
+  if (!current.state && !current.relation) delete constraints[key];
+  else constraints[key] = current;
+  next.edgeConstraints = constraints;
+  next.edges = constraints;
   return normalizePuzzle(next);
 }
 
 export function setEdgeRelation(puzzle, a, b, relation) {
   const next = clonePuzzle(puzzle);
   const key = edgeKey(a, b);
-  const current = next.edges[key] ?? { state: null, relation: null };
+  const constraints = { ...(next.edgeConstraints ?? next.edges ?? {}) };
+  const current = constraints[key] ?? { state: null, relation: null };
   current.relation = relation;
-  if (!current.state && !current.relation) delete next.edges[key];
-  else next.edges[key] = current;
+  if (!current.state && !current.relation) delete constraints[key];
+  else constraints[key] = current;
+  next.edgeConstraints = constraints;
+  next.edges = constraints;
   return normalizePuzzle(next);
 }
 
 export function cycleEdgeConstraint(puzzle, a, b) {
   const key = edgeKey(a, b);
-  const current = puzzle.edges[key] ?? { state: null, relation: null };
+  const current = puzzle.edgeConstraints[key] ?? puzzle.edges[key] ?? { state: null, relation: null };
   const order = [
     { state: null, relation: null },
     { state: "cut", relation: null },
@@ -177,6 +204,276 @@ export function parseShapeBank(text) {
     shapes.push({ name, cells: normalized });
   }
   return { shapes, errors };
+}
+
+function normalizeActiveCells(raw, size) {
+  if (Array.isArray(raw.activeCells)) {
+    return uniqueSortedIndexes(raw.activeCells, size);
+  }
+  if (Array.isArray(raw.active)) {
+    return raw.active.map((isActive, index) => (isActive !== false && index < size ? index : -1)).filter((index) => index >= 0);
+  }
+  return Array.from({ length: size }, (_, index) => index);
+}
+
+function normalizeSymbols(rawSymbols, size, activeSet) {
+  const symbols = {};
+  for (const [key, value] of Object.entries(rawSymbols ?? {})) {
+    const index = Number(key);
+    const symbol = String(value ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (Number.isInteger(index) && index >= 0 && index < size && activeSet.has(index) && symbol) {
+      symbols[index] = symbol.slice(0, 3);
+    }
+  }
+  return symbols;
+}
+
+function normalizeRules(raw) {
+  const incoming = raw.rules ?? {};
+  const rules = {};
+
+  for (const [key, value] of Object.entries(incoming)) {
+    if (!LEGACY_RULE_FIELDS.has(key)) {
+      rules[key] = value && typeof value === "object" ? clonePlain(value) : value;
+    }
+  }
+
+  const area = Math.max(0, Number(hasOwn(incoming, "area") ? incoming.area : incoming.precision?.area) || 0);
+  const roseCounts = normalizeRequiredSymbolCounts(
+    hasOwn(incoming, "roseLabels")
+      ? countsFromRoseLabels(incoming.roseLabels)
+      : incoming.rose_window?.requiredSymbolCounts ?? incoming.rose_window?.requiredCounts
+  );
+  const roseLabels = normalizeRoseLabels(incoming.roseLabels, roseCounts);
+  const allowRotations = hasOwn(incoming, "allowRotations")
+    ? incoming.allowRotations
+    : incoming.shape_bank?.allowRotations ?? raw.shapeBank?.allowRotations;
+  const allowReflections = hasOwn(incoming, "allowReflections")
+    ? incoming.allowReflections
+    : incoming.shape_bank?.allowReflections ?? raw.shapeBank?.allowReflections;
+  const shapeEquivalenceAllowRotations =
+    hasOwn(incoming, "shapeEquivalenceAllowRotations")
+      ? incoming.shapeEquivalenceAllowRotations
+      : incoming.shape_bank?.shapeEquivalenceAllowRotations ?? raw.shapeBank?.shapeEquivalenceAllowRotations;
+  const shapeEquivalenceAllowReflections =
+    hasOwn(incoming, "shapeEquivalenceAllowReflections")
+      ? incoming.shapeEquivalenceAllowReflections
+      : incoming.shape_bank?.shapeEquivalenceAllowReflections ?? raw.shapeBank?.shapeEquivalenceAllowReflections;
+  const shapeBankText = hasOwn(incoming, "shapeBankText")
+    ? incoming.shapeBankText
+    : raw.shapeBank?.text ?? incoming.shape_bank?.text;
+
+  rules.area = area;
+  rules.roseLabels = roseLabels;
+  rules.shapeBankText = String(shapeBankText ?? "");
+  rules.allowRotations = allowRotations !== false;
+  rules.allowReflections = allowReflections === true;
+  rules.shapeEquivalenceAllowRotations = shapeEquivalenceAllowRotations !== false;
+  rules.shapeEquivalenceAllowReflections = shapeEquivalenceAllowReflections === true;
+
+  if (area > 0) {
+    rules.precision = {
+      ...(rules.precision ?? {}),
+      area
+    };
+  } else {
+    delete rules.precision;
+  }
+
+  const requiredSymbolCounts = Object.keys(roseCounts).length > 0 ? roseCounts : countsFromRoseLabels(roseLabels);
+  if (Object.keys(requiredSymbolCounts).length > 0) {
+    rules.rose_window = {
+      ...(rules.rose_window ?? {}),
+      requiredSymbolCounts
+    };
+  } else {
+    delete rules.rose_window;
+  }
+
+  return rules;
+}
+
+function normalizeShapeBank(raw, rules) {
+  const incoming = raw.shapeBank ?? raw.rules?.shape_bank ?? {};
+  const text = hasOwn(raw.rules, "shapeBankText") ? rules.shapeBankText : incoming.text ?? rules.shapeBankText;
+  const entries = normalizeShapeBankEntries(incoming.entries);
+  const shapeBank = {
+    text: String(text ?? ""),
+    entries,
+    allowRotations: incoming.allowRotations ?? rules.allowRotations,
+    allowReflections: incoming.allowReflections ?? rules.allowReflections,
+    shapeEquivalenceAllowRotations: incoming.shapeEquivalenceAllowRotations ?? rules.shapeEquivalenceAllowRotations,
+    shapeEquivalenceAllowReflections: incoming.shapeEquivalenceAllowReflections ?? rules.shapeEquivalenceAllowReflections
+  };
+
+  if (incoming.exactUses !== undefined) shapeBank.exactUses = Number(incoming.exactUses);
+  if (incoming.maxUses !== undefined) shapeBank.maxUses = Number(incoming.maxUses);
+
+  if (shapeBank.text || shapeBank.entries.length > 0) {
+    rules.shape_bank = {
+      ...(rules.shape_bank ?? {}),
+      text: shapeBank.text,
+      entries: shapeBank.entries,
+      allowRotations: shapeBank.allowRotations,
+      allowReflections: shapeBank.allowReflections,
+      shapeEquivalenceAllowRotations: shapeBank.shapeEquivalenceAllowRotations,
+      shapeEquivalenceAllowReflections: shapeBank.shapeEquivalenceAllowReflections
+    };
+    if (shapeBank.exactUses !== undefined) rules.shape_bank.exactUses = shapeBank.exactUses;
+    if (shapeBank.maxUses !== undefined) rules.shape_bank.maxUses = shapeBank.maxUses;
+  } else {
+    delete rules.shape_bank;
+  }
+
+  return shapeBank;
+}
+
+function normalizeEdgeConstraints(rawEdges, size, activeSet) {
+  const edgeConstraints = {};
+  for (const [key, value] of Object.entries(rawEdges ?? {})) {
+    const [a, b] = parseEdgeKey(key);
+    if (!Number.isInteger(a) || !Number.isInteger(b)) continue;
+    if (a < 0 || b < 0 || a >= size || b >= size) continue;
+    if (!activeSet.has(a) || !activeSet.has(b)) continue;
+    const state = value?.state === "join" || value?.state === "cut" ? value.state : null;
+    const relation = value?.relation === "sameShape" || value?.relation === "differentShape" ? value.relation : null;
+    if (state || relation) edgeConstraints[edgeKey(a, b)] = { state, relation };
+  }
+  return edgeConstraints;
+}
+
+function normalizeClues(rawClues, size, activeSet) {
+  if (!Array.isArray(rawClues)) return [];
+  const clues = [];
+  for (let index = 0; index < rawClues.length; index += 1) {
+    const rawClue = rawClues[index] ?? {};
+    const clue = {
+      id: String(rawClue.id ?? `clue_${index + 1}`),
+      type: String(rawClue.type ?? rawClue.kind ?? "cell"),
+      ruleId: rawClue.ruleId ? String(rawClue.ruleId) : undefined,
+      location: normalizeLocation(rawClue.location, size, activeSet),
+      params: clonePlain(rawClue.params ?? {})
+    };
+    if (rawClue.value !== undefined) clue.value = rawClue.value;
+    if (rawClue.group !== undefined) clue.group = String(rawClue.group);
+    if (Array.isArray(rawClue.regionRefs ?? rawClue.regions)) {
+      clue.regionRefs = (rawClue.regionRefs ?? rawClue.regions).map((ref) =>
+        typeof ref === "object" ? { ...ref, cell: Number(ref.cell) } : { cell: Number(ref) }
+      );
+    }
+    if (Array.isArray(rawClue.cells)) clue.cells = rawClue.cells.map(Number);
+    clues.push(clue);
+  }
+  return clues;
+}
+
+function normalizeLocation(location, size, activeSet) {
+  if (!location || typeof location !== "object") return undefined;
+  const type = String(location.type ?? "cell");
+  const out = { type };
+  if (Number.isInteger(Number(location.cell))) out.cell = Number(location.cell);
+  if (Array.isArray(location.cells)) out.cells = location.cells.map(Number);
+  if (Number.isInteger(Number(location.x))) out.x = Number(location.x);
+  if (Number.isInteger(Number(location.y))) out.y = Number(location.y);
+  if (location.side !== undefined) out.side = String(location.side);
+  if (out.cell !== undefined && (out.cell < 0 || out.cell >= size || !activeSet.has(out.cell))) return out;
+  return out;
+}
+
+function addLegacyRelationClues(clues, edgeConstraints) {
+  const existingIds = new Set(clues.map((clue) => clue.id));
+  for (const [key, constraint] of Object.entries(edgeConstraints)) {
+    const ruleId = RELATION_RULE_BY_EDGE_RELATION[constraint.relation];
+    if (!ruleId) continue;
+    const [a, b] = parseEdgeKey(key);
+    const id = `edge:${key}:${ruleId}`;
+    if (existingIds.has(id)) continue;
+    clues.push({
+      id,
+      type: "relation",
+      ruleId,
+      location: { type: "edge", cells: [a, b] },
+      regionRefs: [{ cell: a }, { cell: b }],
+      source: "edgeConstraints"
+    });
+    existingIds.add(id);
+  }
+}
+
+function inferRelationRules(rules, clues) {
+  for (const clue of clues) {
+    if (!clue.ruleId) continue;
+    if (rules[clue.ruleId] === undefined) rules[clue.ruleId] = {};
+  }
+}
+
+function normalizeMetadata(metadata) {
+  return metadata && typeof metadata === "object" ? clonePlain(metadata) : {};
+}
+
+function normalizeShapeBankEntries(entries) {
+  if (!Array.isArray(entries)) return [];
+  const out = [];
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index] ?? {};
+    if (!Array.isArray(entry.cells)) continue;
+    const cells = entry.cells
+      .map((cell) => (Array.isArray(cell) ? [Number(cell[0]), Number(cell[1])] : null))
+      .filter((cell) => cell && Number.isInteger(cell[0]) && Number.isInteger(cell[1]));
+    if (cells.length === 0) continue;
+    const normalized = {
+      name: String(entry.name ?? `shape_${index + 1}`),
+      cells: normalizeShape(cells)
+    };
+    if (entry.exactUses !== undefined) normalized.exactUses = Number(entry.exactUses);
+    if (entry.maxUses !== undefined) normalized.maxUses = Number(entry.maxUses);
+    out.push(normalized);
+  }
+  return out;
+}
+
+function normalizeRequiredSymbolCounts(value) {
+  const counts = {};
+  if (!value || typeof value !== "object") return counts;
+  for (const [rawSymbol, rawCount] of Object.entries(value)) {
+    const symbol = String(rawSymbol ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const count = Number(rawCount);
+    if (symbol && Number.isInteger(count) && count > 0) counts[symbol] = count;
+  }
+  return counts;
+}
+
+function normalizeRoseLabels(value, counts) {
+  const text = String(value ?? "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+  if (text) return text;
+  return Object.keys(counts).join("");
+}
+
+function countsFromRoseLabels(labels) {
+  const counts = {};
+  for (const label of new Set(String(labels ?? "").split("").filter(Boolean))) {
+    counts[label] = 1;
+  }
+  return counts;
+}
+
+function uniqueSortedIndexes(indexes, size) {
+  const out = new Set();
+  for (const value of indexes) {
+    const index = Number(value);
+    if (Number.isInteger(index) && index >= 0 && index < size) out.add(index);
+  }
+  return [...out].sort((a, b) => a - b);
+}
+
+function clonePlain(value) {
+  return JSON.parse(JSON.stringify(value ?? {}));
+}
+
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object ?? {}, key);
 }
 
 export const TETROMINO_PRESET = `# Tetromino shape bank. Rotations are controlled by the checkbox.

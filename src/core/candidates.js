@@ -2,27 +2,30 @@ import {
   activeCellIndexes,
   boundsOfShape,
   canonicalShapeKey,
-  hasBit,
   idx,
   maskFromIndexes,
   orthogonalNeighbors,
-  parseEdgeKey,
   shapeCellsFromIndexes,
   shapeTransforms
 } from "./geometry.js";
 import { parseShapeBank } from "./puzzle.js";
+import { candidateShapeForComparison } from "./shape-comparison.js";
+import { edgeConstraintsRule } from "./rules/edge-constraints.js";
+import { applyCandidateFilters, createRuleContext } from "./rules/registry.js";
 
 const DEFAULT_MAX_CANDIDATES = 80000;
 
 export function generateCandidates(puzzle, options = {}) {
   const maxCandidates = options.maxCandidates ?? DEFAULT_MAX_CANDIDATES;
-  const { shapes, errors } = parseShapeBank(puzzle.rules.shapeBankText);
+  const context = options.context ?? createRuleContext(puzzle, options);
+  const { shapes, errors } = shapeBankEntriesForGeneration(puzzle);
   const raw = [];
+  const precisionArea = context.ruleConfigs.precision?.area ?? 0;
 
   if (shapes.length > 0) {
     raw.push(...generateShapePlacementCandidates(puzzle, shapes, maxCandidates));
-  } else if (puzzle.rules.area > 0) {
-    raw.push(...generateConnectedCandidates(puzzle, puzzle.rules.area, maxCandidates));
+  } else if (precisionArea > 0) {
+    raw.push(...generateConnectedCandidates(puzzle, precisionArea, maxCandidates));
   } else {
     errors.push("Set a Precision area or provide a shape bank before solving.");
   }
@@ -32,7 +35,7 @@ export function generateCandidates(puzzle, options = {}) {
   for (const candidate of raw) {
     if (seen.has(candidate.mask.toString())) continue;
     seen.add(candidate.mask.toString());
-    if (!candidateSatisfiesLocalRules(puzzle, candidate)) continue;
+    if (!applyCandidateFilters(candidate, context, [edgeConstraintsRule])) continue;
     candidate.id = filtered.length;
     filtered.push(candidate);
   }
@@ -55,6 +58,7 @@ function makeCandidate(indexes, width, height, source, sourceName = "") {
     cells,
     mask: maskFromIndexes(cells),
     area: cells.length,
+    shapeCells,
     shapeKey: canonicalShapeKey(shapeCells, { allowRotations: true, allowReflections: false }),
     shapeKeyWithReflections: canonicalShapeKey(shapeCells, { allowRotations: true, allowReflections: true }),
     source,
@@ -67,10 +71,10 @@ function makeCandidate(indexes, width, height, source, sourceName = "") {
 function generateShapePlacementCandidates(puzzle, shapes, maxCandidates) {
   const candidates = [];
   for (const shape of shapes) {
-    if (puzzle.rules.area > 0 && shape.cells.length !== puzzle.rules.area) continue;
+    if (puzzle.rules.precision?.area > 0 && shape.cells.length !== puzzle.rules.precision.area) continue;
     const transforms = shapeTransforms(shape.cells, {
-      allowRotations: puzzle.rules.allowRotations,
-      allowReflections: puzzle.rules.allowReflections
+      allowRotations: puzzle.shapeBank?.allowRotations !== false,
+      allowReflections: puzzle.shapeBank?.allowReflections === true
     });
     for (const transformed of transforms) {
       const bounds = boundsOfShape(transformed);
@@ -145,42 +149,12 @@ function generateConnectedCandidates(puzzle, targetArea, maxCandidates) {
   }
 }
 
-function candidateSatisfiesLocalRules(puzzle, candidate) {
-  if (puzzle.rules.area > 0 && candidate.area !== puzzle.rules.area) return false;
-  if (!satisfiesRoseRule(puzzle, candidate)) return false;
-  if (!satisfiesEdgeRules(puzzle, candidate)) return false;
-  return true;
+function shapeBankEntriesForGeneration(puzzle) {
+  const parsed = parseShapeBank(puzzle.shapeBank?.text ?? puzzle.rules.shapeBankText);
+  return {
+    shapes: [...parsed.shapes, ...(puzzle.shapeBank?.entries ?? [])],
+    errors: parsed.errors
+  };
 }
 
-function satisfiesRoseRule(puzzle, candidate) {
-  const required = [...new Set(String(puzzle.rules.roseLabels ?? "").split("").filter(Boolean))];
-  if (required.length === 0) return true;
-
-  const requiredSet = new Set(required);
-  const counts = Object.fromEntries(required.map((label) => [label, 0]));
-
-  for (const cell of candidate.cells) {
-    const symbol = puzzle.symbols[cell];
-    if (!symbol) continue;
-    if (!requiredSet.has(symbol)) return false;
-    counts[symbol] += 1;
-  }
-
-  return required.every((label) => counts[label] === 1);
-}
-
-function satisfiesEdgeRules(puzzle, candidate) {
-  for (const [key, constraint] of Object.entries(puzzle.edges ?? {})) {
-    const [a, b] = parseEdgeKey(key);
-    const hasA = hasBit(candidate.mask, a);
-    const hasB = hasBit(candidate.mask, b);
-    if (constraint.state === "join" && hasA !== hasB) return false;
-    if (constraint.state === "cut" && hasA && hasB) return false;
-    if (constraint.relation && hasA && hasB) return false;
-  }
-  return true;
-}
-
-export function candidateShapeForComparison(puzzle, candidate) {
-  return puzzle.rules.shapeEquivalenceAllowReflections ? candidate.shapeKeyWithReflections : candidate.shapeKey;
-}
+export { candidateShapeForComparison };

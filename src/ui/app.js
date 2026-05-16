@@ -11,6 +11,7 @@ import {
 } from "../core/puzzle.js";
 import { solvePuzzle } from "../core/solver.js";
 import { findNextLogicalStep, summarizeSolution } from "../core/explain.js";
+import { validatePuzzle } from "../core/validation.js";
 
 const CELL = 46;
 const SVG_PAD = 10;
@@ -149,10 +150,16 @@ function bindEvents() {
 
   el.importJsonButton.addEventListener("click", () => {
     try {
-      puzzle = normalizePuzzle(JSON.parse(el.jsonBox.value));
+      const rawPuzzle = JSON.parse(el.jsonBox.value);
+      const validation = validatePuzzle(rawPuzzle);
+      puzzle = validation.puzzle;
       clearComputed();
       syncFormFromPuzzle();
-      renderStatus("Puzzle JSON imported.", "good");
+      if (validation.ok) {
+        renderStatus("Puzzle JSON imported.", "good");
+      } else {
+        renderStatus(`Puzzle JSON imported with validation issues:\n${validation.errors.join("\n")}`, "bad");
+      }
       render();
     } catch (error) {
       renderStatus(`Import failed: ${error.message}`, "bad");
