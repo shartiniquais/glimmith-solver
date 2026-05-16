@@ -1,0 +1,21 @@
+{
+  "name": "glimmith-solver",
+  "version": "0.1.0",
+  "description": "Visual exact-cover solver prototype for The Artisan of Glimmith-style region puzzles.",
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/server.mjs",
+    "dev": "node scripts/server.mjs",
+    "test": "node --test",
+    "check": "node --test"
+  },
+  "keywords": [
+    "puzzle",
+    "solver",
+    "exact-cover",
+    "polyomino",
+    "glimmith"
+  ],
+  "author": "",
+  "license": "MIT"
+}
