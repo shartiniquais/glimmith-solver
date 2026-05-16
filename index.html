@@ -19,6 +19,8 @@
           <label><input id="themeSystemInput" name="themePreference" type="radio" value="system" /> System</label>
         </div>
         <div class="top-actions">
+          <button id="undoButton" type="button" disabled>Undo</button>
+          <button id="redoButton" type="button" disabled>Redo</button>
           <button id="importJsonButton" type="button">Import JSON</button>
           <button id="exportJsonButton" type="button">Export JSON</button>
           <button id="solveButton" class="primary" type="button">Solve</button>
@@ -42,6 +44,7 @@
                 </label>
                 <button id="loadExampleButton" type="button">Load</button>
               </div>
+              <p id="exampleDetails" class="hint">Choose an example to see covered rules.</p>
               <div class="tool-grid" role="group" aria-label="Drawing tools">
                 <button class="tool active" data-tool="cell" type="button">Active / hole cells</button>
                 <button class="tool" data-tool="symbol" type="button">Cycle symbols</button>
@@ -182,7 +185,42 @@
                 <label>Scale <input id="screenshotScaleInput" type="number" min="0.1" max="5" step="0.05" value="1" /></label>
                 <label>Rotate <input id="screenshotRotationInput" type="number" step="1" value="0" /></label>
               </div>
-              <button id="clearScreenshotButton" type="button">Clear screenshot</button>
+              <div class="row">
+                <button id="fitScreenshotButton" type="button">Fit image to board</button>
+                <button id="resetScreenshotButton" type="button">Reset transform</button>
+                <button id="clearScreenshotButton" type="button">Clear screenshot</button>
+              </div>
+              <label class="checkbox-row single"><input id="screenshotLockInput" type="checkbox" /> Lock image while drawing</label>
+              <label class="stacked">Grid opacity
+                <input id="gridOpacityInput" type="range" min="0" max="1" step="0.05" value="1" />
+              </label>
+              <label class="stacked">Cell fill opacity while tracing
+                <input id="cellFillOpacityInput" type="range" min="0" max="1" step="0.05" value="0.72" />
+              </label>
+            </div>
+          </details>
+
+          <details class="workflow-section">
+            <summary>Saved puzzles</summary>
+            <div class="section-body">
+              <label class="stacked">Save name
+                <input id="savedPuzzleNameInput" type="text" placeholder="Puzzle name" />
+              </label>
+              <div class="row">
+                <button id="savePuzzleButton" type="button">Save current puzzle</button>
+              </div>
+              <label class="stacked">Saved puzzles
+                <select id="savedPuzzleSelect"></select>
+              </label>
+              <div class="row">
+                <button id="loadSavedPuzzleButton" type="button">Load saved</button>
+                <button id="deleteSavedPuzzleButton" type="button">Delete saved</button>
+              </div>
+              <div class="row">
+                <button id="exportSavedPuzzlesButton" type="button">Export saved collection</button>
+                <button id="importSavedPuzzlesButton" type="button">Import saved collection</button>
+              </div>
+              <p id="savedPuzzleHint" class="hint">Saved puzzles persist in this browser.</p>
             </div>
           </details>
 
@@ -239,6 +277,7 @@
           </section>
           <section>
             <h2>Validation</h2>
+            <button id="copyValidationButton" type="button">Copy validation report</button>
             <div id="validationBox" class="validation-box">No validation issues.</div>
           </section>
           <section>

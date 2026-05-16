@@ -18,6 +18,9 @@ test("index.html exposes rule palette and validation UI anchors", () => {
   assert.match(indexHtml, /id="boundaryGraphToggle"/);
   assert.match(indexHtml, /id="noSolutionBox"/);
   assert.match(indexHtml, /id="exampleSelect"/);
+  assert.match(indexHtml, /id="undoButton"/);
+  assert.match(indexHtml, /id="redoButton"/);
+  assert.match(indexHtml, /id="copyValidationButton"/);
 });
 
 test("index.html exposes theme toggle controls", () => {
@@ -29,6 +32,13 @@ test("index.html exposes theme toggle controls", () => {
 
 test("app imports RULE_REGISTRY for registry-driven UI", () => {
   assert.match(appSource, /import \{ RULE_REGISTRY \}/);
+});
+
+test("app wires undo/redo and saved-puzzle helpers", () => {
+  assert.match(appSource, /createHistory/);
+  assert.match(appSource, /undoHistory/);
+  assert.match(appSource, /savePuzzle/);
+  assert.match(appSource, /loadSavedPuzzle/);
 });
 
 test("app persists theme preferences through the theme module", () => {
@@ -71,6 +81,24 @@ test("shape-bank editor has list and preview support", () => {
   assert.match(indexHtml, /id="shapeBankList"/);
   assert.match(appSource, /renderShapeBankList/);
   assert.match(appSource, /shapePreviewSvg/);
+});
+
+test("screenshot tracing exposes alignment and opacity controls", () => {
+  assert.match(indexHtml, /id="fitScreenshotButton"/);
+  assert.match(indexHtml, /id="resetScreenshotButton"/);
+  assert.match(indexHtml, /id="screenshotLockInput"/);
+  assert.match(indexHtml, /id="gridOpacityInput"/);
+  assert.match(indexHtml, /id="cellFillOpacityInput"/);
+});
+
+test("saved puzzle controls are present", () => {
+  assert.match(indexHtml, /id="savedPuzzleNameInput"/);
+  assert.match(indexHtml, /id="savePuzzleButton"/);
+  assert.match(indexHtml, /id="savedPuzzleSelect"/);
+  assert.match(indexHtml, /id="loadSavedPuzzleButton"/);
+  assert.match(indexHtml, /id="deleteSavedPuzzleButton"/);
+  assert.match(indexHtml, /id="exportSavedPuzzlesButton"/);
+  assert.match(indexHtml, /id="importSavedPuzzlesButton"/);
 });
 
 test("relation tool UI describes edge-adjacent placement", () => {

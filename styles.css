@@ -485,11 +485,12 @@ textarea {
 .cell {
   stroke: var(--cell-stroke);
   stroke-width: 1;
+  stroke-opacity: var(--grid-opacity, 1);
 }
 
 .cell.active-cell { fill: var(--cell-active); }
 .cell.inactive-cell { fill: var(--cell-inactive); }
-.trace-cell.active-cell { fill-opacity: 0.72; }
+.trace-cell.active-cell { fill-opacity: var(--trace-cell-opacity, 0.72); }
 .trace-cell.inactive-cell { fill-opacity: 0.84; }
 .cell.solution-cell { stroke-width: 1.5; }
 

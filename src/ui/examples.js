@@ -1,5 +1,5 @@
 export const EXAMPLES = Object.freeze([
-  example("precision", "Precision", ["precision"], { width: 2, height: 2, rules: { area: 4 } }),
+  example("precision", "Precision", ["precision"], { width: 2, height: 2, rules: { area: 4 } }, "unique_solution"),
   example("rose", "Rose Windows", ["rose_window"], {
     width: 4,
     height: 1,
@@ -119,8 +119,8 @@ export function exampleById(id) {
   return item ? JSON.parse(JSON.stringify(item)) : null;
 }
 
-function example(id, label, ruleIds, puzzle) {
-  return Object.freeze({ id, label, ruleIds: Object.freeze(ruleIds), puzzle: Object.freeze(puzzle) });
+function example(id, label, ruleIds, puzzle, expectedStatus = "") {
+  return Object.freeze({ id, label, ruleIds: Object.freeze(ruleIds), expectedStatus, puzzle: Object.freeze(puzzle) });
 }
 
 function cellClue(id, ruleId, cell, data = {}) {

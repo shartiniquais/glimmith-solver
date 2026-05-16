@@ -36,6 +36,15 @@ import { inspectorStateForSelection } from "./inspector-state.js";
 import { hasUiCandidateSource } from "./candidate-source.js";
 import { parseVertexKey, vertexKey } from "./board-hit-testing.js";
 import { EXAMPLES, exampleById } from "./examples.js";
+import { canRedo, canUndo, cloneState, createHistory, recordHistory, redoHistory, undoHistory } from "./history.js";
+import {
+  deleteSavedPuzzle,
+  exportSavedPuzzleCollection,
+  importSavedPuzzleCollection,
+  listSavedPuzzles,
+  loadSavedPuzzle,
+  savePuzzle
+} from "./saved-puzzles.js";
 
 const CELL = 46;
 const SVG_PAD = 10;
@@ -43,6 +52,7 @@ const MINI_GRID_SIZE = 5;
 const DEFAULT_BANK_SHAPE = "O4: 0,0 1,0 0,1 1,1";
 
 let puzzle = createPuzzle(6, 6);
+let puzzleHistory = createHistory(puzzle);
 let currentTool = "cell";
 let currentSolution = null;
 let lastStep = null;
@@ -51,6 +61,7 @@ let selectedClueId = null;
 let lastCandidateSummary = null;
 let explanationTrace = [];
 let relationFirstCell = null;
+let lastChangeDescription = "Initial puzzle";
 let shapeDraftCells = new Set(["0,0", "1,0", "0,1", "1,1"]);
 let polyominoDraftCells = new Set(["0,0", "1,0", "0,1"]);
 let traceImage = {
@@ -59,7 +70,10 @@ let traceImage = {
   x: 0,
   y: 0,
   scale: 1,
-  rotation: 0
+  rotation: 0,
+  locked: false,
+  gridOpacity: 1,
+  cellOpacity: 0.72
 };
 
 const el = {
@@ -101,8 +115,15 @@ const el = {
   screenshotYInput: document.getElementById("screenshotYInput"),
   screenshotScaleInput: document.getElementById("screenshotScaleInput"),
   screenshotRotationInput: document.getElementById("screenshotRotationInput"),
+  screenshotLockInput: document.getElementById("screenshotLockInput"),
+  fitScreenshotButton: document.getElementById("fitScreenshotButton"),
+  resetScreenshotButton: document.getElementById("resetScreenshotButton"),
+  gridOpacityInput: document.getElementById("gridOpacityInput"),
+  cellFillOpacityInput: document.getElementById("cellFillOpacityInput"),
   clearScreenshotButton: document.getElementById("clearScreenshotButton"),
   maxNodesInput: document.getElementById("maxNodesInput"),
+  undoButton: document.getElementById("undoButton"),
+  redoButton: document.getElementById("redoButton"),
   solveButton: document.getElementById("solveButton"),
   nextStepButton: document.getElementById("nextStepButton"),
   explainAllButton: document.getElementById("explainAllButton"),
@@ -116,8 +137,18 @@ const el = {
   importJsonButton: document.getElementById("importJsonButton"),
   exampleSelect: document.getElementById("exampleSelect"),
   loadExampleButton: document.getElementById("loadExampleButton"),
+  exampleDetails: document.getElementById("exampleDetails"),
+  savedPuzzleNameInput: document.getElementById("savedPuzzleNameInput"),
+  savePuzzleButton: document.getElementById("savePuzzleButton"),
+  savedPuzzleSelect: document.getElementById("savedPuzzleSelect"),
+  loadSavedPuzzleButton: document.getElementById("loadSavedPuzzleButton"),
+  deleteSavedPuzzleButton: document.getElementById("deleteSavedPuzzleButton"),
+  exportSavedPuzzlesButton: document.getElementById("exportSavedPuzzlesButton"),
+  importSavedPuzzlesButton: document.getElementById("importSavedPuzzlesButton"),
+  savedPuzzleHint: document.getElementById("savedPuzzleHint"),
   jsonBox: document.getElementById("jsonBox"),
   validationBox: document.getElementById("validationBox"),
+  copyValidationButton: document.getElementById("copyValidationButton"),
   statusBox: document.getElementById("statusBox"),
   solutionText: document.getElementById("solutionText"),
   noSolutionBox: document.getElementById("noSolutionBox"),
@@ -131,6 +162,7 @@ const el = {
 
 setupTheme();
 renderExampleOptions();
+renderSavedPuzzleOptions();
 bindEvents();
 syncFormFromPuzzle();
 render();
@@ -142,18 +174,95 @@ function bindEvents() {
     applyThemePreference(preference);
   });
 
+  el.undoButton.addEventListener("click", undoPuzzleEdit);
+  el.redoButton.addEventListener("click", redoPuzzleEdit);
+  document.addEventListener("keydown", (event) => {
+    const key = event.key.toLowerCase();
+    const modifier = event.ctrlKey || event.metaKey;
+    if (!modifier) return;
+    if (key === "z" && !event.shiftKey) {
+      event.preventDefault();
+      undoPuzzleEdit();
+    } else if (key === "y" || (key === "z" && event.shiftKey)) {
+      event.preventDefault();
+      redoPuzzleEdit();
+    }
+  });
+
   el.loadExampleButton.addEventListener("click", () => {
     const example = exampleById(el.exampleSelect.value);
     if (!example) return;
-    puzzle = normalizePuzzle(example.puzzle);
     selectedCell = null;
     selectedClueId = null;
     relationFirstCell = null;
     explanationTrace = [];
-    clearComputed();
-    syncFormFromPuzzle();
+    commitPuzzle(example.puzzle, `Loaded example ${example.label}`, { syncForm: true });
     renderStatus(`Loaded example: ${example.label}.`, "good");
     render();
+  });
+
+  el.exampleSelect.addEventListener("change", () => renderExampleDetails());
+
+  el.savePuzzleButton.addEventListener("click", () => {
+    updateRulesFromForm(false, { recordHistory: false });
+    try {
+      const entry = savePuzzle(localStorage, el.savedPuzzleNameInput.value, puzzle);
+      renderSavedPuzzleOptions(entry.id);
+      renderStatus(`Saved puzzle "${entry.name}".`, "good");
+    } catch (error) {
+      renderStatus(error.message, "bad");
+    }
+  });
+
+  el.loadSavedPuzzleButton.addEventListener("click", () => {
+    const saved = loadSavedPuzzle(localStorage, el.savedPuzzleSelect.value);
+    if (!saved) {
+      renderStatus("Choose a saved puzzle to load.", "warn");
+      return;
+    }
+    selectedCell = null;
+    selectedClueId = null;
+    relationFirstCell = null;
+    commitPuzzle(saved, "Loaded saved puzzle", { syncForm: true });
+    renderStatus("Saved puzzle loaded.", "good");
+    render();
+  });
+
+  el.deleteSavedPuzzleButton.addEventListener("click", () => {
+    const id = el.savedPuzzleSelect.value;
+    if (!id) {
+      renderStatus("Choose a saved puzzle to delete.", "warn");
+      return;
+    }
+    deleteSavedPuzzle(localStorage, id);
+    renderSavedPuzzleOptions();
+    renderStatus("Saved puzzle deleted.", "good");
+  });
+
+  el.exportSavedPuzzlesButton.addEventListener("click", () => {
+    el.jsonBox.value = exportSavedPuzzleCollection(localStorage);
+    renderStatus("Saved-puzzle collection exported into the JSON box.", "good");
+  });
+
+  el.importSavedPuzzlesButton.addEventListener("click", () => {
+    try {
+      const imported = importSavedPuzzleCollection(localStorage, el.jsonBox.value);
+      renderSavedPuzzleOptions();
+      renderStatus(`Imported ${imported.length} saved puzzle${imported.length === 1 ? "" : "s"}.`, "good");
+    } catch (error) {
+      renderStatus(`Saved-puzzle import failed: ${error.message}`, "bad");
+    }
+  });
+
+  el.copyValidationButton.addEventListener("click", async () => {
+    const text = validationReportText();
+    try {
+      await navigator.clipboard.writeText(text);
+      renderStatus("Validation report copied.", "good");
+    } catch {
+      el.jsonBox.value = text;
+      renderStatus("Clipboard unavailable; validation report placed in the JSON box.", "warn");
+    }
   });
 
   document.querySelectorAll(".tool").forEach((button) => {
@@ -163,9 +272,7 @@ function bindEvents() {
   el.resizeButton.addEventListener("click", () => {
     const width = clamp(Number(el.widthInput.value) || puzzle.width, 1, 14);
     const height = clamp(Number(el.heightInput.value) || puzzle.height, 1, 14);
-    puzzle = resizePuzzle(puzzle, width, height);
-    clearComputed();
-    syncFormFromPuzzle();
+    commitPuzzle(resizePuzzle(puzzle, width, height), `Resized board to ${width}x${height}`, { syncForm: true });
     render();
   });
 
@@ -189,18 +296,18 @@ function bindEvents() {
     renderStatus(toolButton.dataset.status ?? "Tool selected.", "");
   });
 
-  el.areaInput.addEventListener("change", updateRulesFromForm);
-  el.roseInput.addEventListener("input", updateRulesFromForm);
-  el.rotationsInput.addEventListener("change", updateRulesFromForm);
-  el.reflectionsInput.addEventListener("change", updateRulesFromForm);
-  el.shapeEquivRotationsInput.addEventListener("change", updateRulesFromForm);
-  el.shapeEquivReflectionsInput.addEventListener("change", updateRulesFromForm);
-  el.shapeBankInput.addEventListener("input", updateRulesFromForm);
+  el.areaInput.addEventListener("change", () => updateRulesFromForm(true, { label: "Changed Precision area" }));
+  el.roseInput.addEventListener("input", () => updateRulesFromForm(true, { label: "Changed Rose labels" }));
+  el.rotationsInput.addEventListener("change", () => updateRulesFromForm(true, { label: "Changed Shape Bank rotation setting" }));
+  el.reflectionsInput.addEventListener("change", () => updateRulesFromForm(true, { label: "Changed Shape Bank reflection setting" }));
+  el.shapeEquivRotationsInput.addEventListener("change", () => updateRulesFromForm(true, { label: "Changed shape-comparison rotation setting" }));
+  el.shapeEquivReflectionsInput.addEventListener("change", () => updateRulesFromForm(true, { label: "Changed shape-comparison reflection setting" }));
+  el.shapeBankInput.addEventListener("input", () => updateRulesFromForm(true, { label: "Edited Shape Bank text" }));
   el.shapeBankList.addEventListener("click", (event) => {
     const deleteButton = event.target.closest("[data-delete-shape-index]");
     if (!deleteButton) return;
     el.shapeBankInput.value = removeShapeBankEntryAt(el.shapeBankInput.value, Number(deleteButton.dataset.deleteShapeIndex));
-    updateRulesFromForm(false);
+    updateRulesFromForm(false, { label: "Deleted Shape Bank entry" });
     renderStatus("Shape removed from the Shape Bank.", "good");
     render();
   });
@@ -208,9 +315,8 @@ function bindEvents() {
   el.inspectorBox.addEventListener("click", (event) => {
     const deleteButton = event.target.closest("[data-delete-clue-id]");
     if (deleteButton) {
-      puzzle = removeClueById(deleteButton.dataset.deleteClueId);
+      commitPuzzle(removeClueById(deleteButton.dataset.deleteClueId), "Deleted clue");
       selectedClueId = null;
-      clearComputed();
       renderStatus("Clue removed.", "good");
       render();
     }
@@ -223,51 +329,44 @@ function bindEvents() {
 
     if (target.dataset.areaValue !== undefined) {
       const value = Math.max(1, Number(target.value) || 1);
-      puzzle = updateClueById(clueId, (clue) => ({ ...clue, value, params: { ...(clue.params ?? {}), value } }));
-      clearComputed();
+      commitPuzzle(updateClueById(clueId, (clue) => ({ ...clue, value, params: { ...(clue.params ?? {}), value } })), "Edited Area Number clue");
       render();
     }
     if (target.dataset.polyOption) {
-      puzzle = updateClueById(clueId, (clue) => ({
+      commitPuzzle(updateClueById(clueId, (clue) => ({
         ...clue,
         params: { ...(clue.params ?? {}), [target.dataset.polyOption]: target.checked }
-      }));
-      clearComputed();
+      })), "Edited Polyomino clue");
       render();
     }
     if (target.dataset.differenceValue !== undefined) {
       const value = Math.max(0, Number(target.value) || 0);
-      puzzle = updateClueById(clueId, (clue) => ({ ...clue, value, params: { ...(clue.params ?? {}), difference: value } }));
-      clearComputed();
+      commitPuzzle(updateClueById(clueId, (clue) => ({ ...clue, value, params: { ...(clue.params ?? {}), difference: value } })), "Edited Difference relation clue");
       render();
     }
     if (target.dataset.inequalityDirection !== undefined) {
       const direction = target.value === "gt" ? "gt" : "lt";
-      puzzle = updateClueById(clueId, (clue) => ({ ...clue, params: { ...(clue.params ?? {}), direction } }));
-      clearComputed();
+      commitPuzzle(updateClueById(clueId, (clue) => ({ ...clue, params: { ...(clue.params ?? {}), direction } })), "Edited Inequality relation clue");
       render();
     }
     if (target.dataset.palisadePattern !== undefined) {
-      puzzle = updateClueById(clueId, (clue) => ({ ...clue, params: { ...(clue.params ?? {}), pattern: target.value } }));
-      clearComputed();
+      commitPuzzle(updateClueById(clueId, (clue) => ({ ...clue, params: { ...(clue.params ?? {}), pattern: target.value } })), "Edited Palisade clue");
       render();
     }
     if (target.dataset.compassDirection) {
       const direction = target.dataset.compassDirection;
       const value = target.value === "" ? undefined : Math.max(0, Number(target.value) || 0);
-      puzzle = updateClueById(clueId, (clue) => {
+      commitPuzzle(updateClueById(clueId, (clue) => {
         const params = { ...(clue.params ?? {}) };
         if (value === undefined) delete params[direction];
         else params[direction] = value;
         return { ...clue, params };
-      });
-      clearComputed();
+      }), "Edited Compass clue");
       render();
     }
     if (target.dataset.watchtowerValue !== undefined) {
       const value = clamp(Number(target.value) || 1, 1, 4);
-      puzzle = updateClueById(clueId, (clue) => ({ ...clue, value }));
-      clearComputed();
+      commitPuzzle(updateClueById(clueId, (clue) => ({ ...clue, value })), "Edited Watchtower clue");
       render();
     }
   });
@@ -304,7 +403,7 @@ function bindEvents() {
       return;
     }
     el.shapeBankInput.value = appendShapeBankEntry(el.shapeBankInput.value, entry);
-    updateRulesFromForm(false);
+    updateRulesFromForm(false, { label: "Added Shape Bank entry" });
     el.shapeNameInput.value = `Shape${shapeBankLineCount() + 1}`;
     renderStatus("Drawn shape added to the Shape Bank.", "good");
     render();
@@ -326,13 +425,42 @@ function bindEvents() {
     el.screenshotXInput,
     el.screenshotYInput,
     el.screenshotScaleInput,
-    el.screenshotRotationInput
+    el.screenshotRotationInput,
+    el.gridOpacityInput,
+    el.cellFillOpacityInput
   ]) {
     input.addEventListener("input", () => {
       updateTraceFromForm();
       render();
     });
   }
+  el.screenshotLockInput.addEventListener("change", () => {
+    updateTraceFromForm();
+    updateTraceControls();
+    renderStatus(traceImage.locked ? "Screenshot transform locked while drawing." : "Screenshot transform unlocked.", "");
+    render();
+  });
+  el.fitScreenshotButton.addEventListener("click", () => {
+    traceImage.x = 0;
+    traceImage.y = 0;
+    traceImage.scale = 1;
+    traceImage.rotation = 0;
+    updateTraceControls();
+    renderStatus("Screenshot fitted to the board.", "good");
+    render();
+  });
+  el.resetScreenshotButton.addEventListener("click", () => {
+    traceImage.x = 0;
+    traceImage.y = 0;
+    traceImage.scale = 1;
+    traceImage.rotation = 0;
+    traceImage.opacity = 0.35;
+    traceImage.gridOpacity = 1;
+    traceImage.cellOpacity = 0.72;
+    updateTraceControls();
+    renderStatus("Screenshot transform reset.", "good");
+    render();
+  });
   el.clearScreenshotButton.addEventListener("click", () => {
     traceImage.href = "";
     el.screenshotInput.value = "";
@@ -343,8 +471,7 @@ function bindEvents() {
   el.boundaryGraphToggle.addEventListener("change", () => render());
 
   el.tetrominoButton.addEventListener("click", () => {
-    puzzle.rules.shapeBankText = TETROMINO_PRESET;
-    clearComputed();
+    commitPuzzle({ ...puzzle, rules: { ...puzzle.rules, shapeBankText: TETROMINO_PRESET } }, "Loaded tetromino Shape Bank", { syncForm: true });
     syncFormFromPuzzle();
     renderStatus("Tetromino shape bank loaded. Leave Precision area at 4 or set it to 0 to allow all bank shapes.", "warn");
     render();
@@ -356,9 +483,8 @@ function bindEvents() {
     const vertex = event.target.dataset.vertex;
     const cell = event.target.dataset.cell;
     if (clueId && currentTool === "eraseClue") {
-      puzzle = removeClueById(clueId);
+      commitPuzzle(removeClueById(clueId), "Erased clue");
       selectedClueId = null;
-      clearComputed();
       renderStatus("Clue removed.", "good");
       render();
       return;
@@ -373,25 +499,22 @@ function bindEvents() {
       const parsed = parseVertexKey(vertex);
       if (!parsed) return;
       const value = clamp(Number(el.watchtowerValueInput.value) || 1, 1, 4);
-      puzzle = upsertVertexClue("watchtower", parsed, { value });
+      commitPuzzle(upsertVertexClue("watchtower", parsed, { value }), `Placed Watchtower clue at (${parsed.x}, ${parsed.y})`);
       selectedClueId = `watchtower:${parsed.x}:${parsed.y}`;
-      clearComputed();
       renderStatus(`Watchtower ${value} placed at vertex (${parsed.x}, ${parsed.y}).`, "good");
       render();
       return;
     }
     if (edge && currentTool === "edge") {
       const [a, b] = parseEdgeKey(edge);
-      puzzle = cycleEdgeConstraint(puzzle, a, b);
-      clearComputed();
+      commitPuzzle(cycleEdgeConstraint(puzzle, a, b), `Changed edge ${cellLabel(a, puzzle.width)}-${cellLabel(b, puzzle.width)}`);
       render();
       return;
     }
     if (edge && currentTool === "relation") {
       const [a, b] = parseEdgeKey(edge);
       const ruleId = el.relationRuleInput.value;
-      puzzle = upsertRelationClue(ruleId, a, b);
-      clearComputed();
+      commitPuzzle(upsertRelationClue(ruleId, a, b), `Placed ${ruleLabel(ruleId)} relation clue`);
       relationFirstCell = null;
       renderStatus(`${ruleLabel(ruleId)} relation clue placed on an edge.`, "good");
       render();
@@ -402,7 +525,7 @@ function bindEvents() {
   });
 
   el.solveButton.addEventListener("click", () => {
-    updateRulesFromForm(false);
+    updateRulesFromForm(false, { recordHistory: false });
     const result = solvePuzzle(puzzle, { limit: 2, maxNodes: maxNodes() });
     currentSolution = result.solutions[0] ?? null;
     lastStep = null;
@@ -412,7 +535,7 @@ function bindEvents() {
   });
 
   el.nextStepButton.addEventListener("click", () => {
-    updateRulesFromForm(false);
+    updateRulesFromForm(false, { recordHistory: false });
     const result = findNextLogicalStep(puzzle, { maxNodes: maxNodes() });
     lastStep = result.step ?? null;
     el.applyStepButton.disabled = !isStepApplyable(lastStep);
@@ -421,11 +544,10 @@ function bindEvents() {
   });
 
   el.explainAllButton.addEventListener("click", () => {
-    updateRulesFromForm(false);
+    updateRulesFromForm(false, { recordHistory: false });
     const result = explainAllLogicalSteps(puzzle, { maxNodes: maxNodes() });
     explanationTrace = result.steps;
-    puzzle = result.puzzle;
-    clearComputed();
+    commitPuzzle(result.puzzle, "Applied full explanation trace");
     lastStep = null;
     el.solutionText.textContent = `${result.text}\n\nTrace status: ${result.status}. ${result.message}`;
     renderStatus(`Built ${result.steps.length} explanation step${result.steps.length === 1 ? "" : "s"}.`, result.steps.length ? "good" : "warn");
@@ -434,9 +556,8 @@ function bindEvents() {
 
   el.applyStepButton.addEventListener("click", () => {
     if (!lastStep) return;
-    puzzle = applyLogicalStep(puzzle, lastStep);
+    commitPuzzle(applyLogicalStep(puzzle, lastStep), "Applied logical step");
     explanationTrace.push(lastStep);
-    clearComputed();
     lastStep = null;
     el.applyStepButton.disabled = true;
     renderStatus("Applied the logical step.", "good");
@@ -444,7 +565,7 @@ function bindEvents() {
   });
 
   el.showCandidatesButton.addEventListener("click", () => {
-    updateRulesFromForm(false);
+    updateRulesFromForm(false, { recordHistory: false });
     if (selectedCell === null) {
       renderStatus("Select a cell on the board first.", "warn");
       return;
@@ -480,7 +601,7 @@ function bindEvents() {
   });
 
   el.exportJsonButton.addEventListener("click", () => {
-    updateRulesFromForm(false);
+    updateRulesFromForm(false, { recordHistory: false });
     el.jsonBox.value = JSON.stringify(puzzle, null, 2);
     renderStatus("Puzzle JSON exported into the text area.", "good");
     render();
@@ -490,9 +611,7 @@ function bindEvents() {
     try {
       const rawPuzzle = JSON.parse(el.jsonBox.value);
       const validation = validatePuzzle(rawPuzzle);
-      puzzle = validation.puzzle;
-      clearComputed();
-      syncFormFromPuzzle();
+      commitPuzzle(validation.puzzle, "Imported puzzle JSON", { syncForm: true });
       if (validation.ok) {
         renderStatus("Puzzle JSON imported.", "good");
       } else {
@@ -522,6 +641,29 @@ function renderExampleOptions() {
   el.exampleSelect.innerHTML = EXAMPLES.map(
     (example) => `<option value="${escapeHtml(example.id)}">${escapeHtml(example.label)}</option>`
   ).join("");
+  renderExampleDetails();
+}
+
+function renderExampleDetails() {
+  const example = EXAMPLES.find((item) => item.id === el.exampleSelect.value);
+  if (!example) {
+    el.exampleDetails.textContent = "No example selected.";
+    return;
+  }
+  const rules = example.ruleIds.map(ruleLabel).join(", ");
+  const expected = example.expectedStatus ? ` Expected solve status: ${example.expectedStatus}.` : "";
+  el.exampleDetails.textContent = `Covers: ${rules}.${expected}`;
+}
+
+function renderSavedPuzzleOptions(selectedId = "") {
+  const saved = listSavedPuzzles(localStorage);
+  el.savedPuzzleSelect.innerHTML = saved.length
+    ? saved.map((entry) => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.name)}</option>`).join("")
+    : `<option value="">No saved puzzles</option>`;
+  if (selectedId) el.savedPuzzleSelect.value = selectedId;
+  el.savedPuzzleHint.textContent = saved.length
+    ? `${saved.length} saved puzzle${saved.length === 1 ? "" : "s"} in this browser.`
+    : "Saved puzzles persist in this browser's localStorage.";
 }
 
 function handleCellClick(cell) {
@@ -533,23 +675,20 @@ function handleCellClick(cell) {
   }
 
   if (currentTool === "cell") {
-    puzzle = toggleCellActive(puzzle, cell);
-    clearComputed();
+    commitPuzzle(toggleCellActive(puzzle, cell), `Toggled cell ${cellLabel(cell, puzzle.width)}`);
     render();
     return;
   }
 
   if (currentTool === "symbol") {
-    puzzle = cycleCellSymbol(puzzle, cell);
-    clearComputed();
+    commitPuzzle(cycleCellSymbol(puzzle, cell), `Changed symbol on ${cellLabel(cell, puzzle.width)}`);
     render();
     return;
   }
 
   if (currentTool === "areaNumber") {
     const value = Math.max(1, Number(el.areaClueValueInput.value) || 1);
-    puzzle = upsertCellClue("area_number", cell, { value, params: { value } });
-    clearComputed();
+    commitPuzzle(upsertCellClue("area_number", cell, { value, params: { value } }), `Placed Area Number clue on ${cellLabel(cell, puzzle.width)}`);
     renderStatus(`Area Number ${value} placed on ${cellLabel(cell, puzzle.width)}.`, "good");
     render();
     return;
@@ -561,14 +700,13 @@ function handleCellClick(cell) {
       renderStatus("Draw a polyomino clue shape before placing it.", "warn");
       return;
     }
-    puzzle = upsertCellClue("polyomino", cell, {
+    commitPuzzle(upsertCellClue("polyomino", cell, {
       params: {
         shape,
         allowRotations: el.polyominoRotationsInput.checked,
         allowReflections: el.polyominoReflectionsInput.checked
       }
-    });
-    clearComputed();
+    }), `Placed Polyomino clue on ${cellLabel(cell, puzzle.width)}`);
     renderStatus(`Polyomino clue placed on ${cellLabel(cell, puzzle.width)}.`, "good");
     render();
     return;
@@ -576,8 +714,7 @@ function handleCellClick(cell) {
 
   if (currentTool === "palisade") {
     const pattern = el.palisadePatternInput.value;
-    puzzle = upsertCellClue("palisade", cell, { params: { pattern } });
-    clearComputed();
+    commitPuzzle(upsertCellClue("palisade", cell, { params: { pattern } }), `Placed Palisade clue on ${cellLabel(cell, puzzle.width)}`);
     renderStatus(`Palisade ${pattern} clue placed on ${cellLabel(cell, puzzle.width)}.`, "good");
     render();
     return;
@@ -585,8 +722,7 @@ function handleCellClick(cell) {
 
   if (currentTool === "compass") {
     const params = compassParamsFromForm();
-    puzzle = upsertCellClue("compass", cell, { params });
-    clearComputed();
+    commitPuzzle(upsertCellClue("compass", cell, { params }), `Placed Compass clue on ${cellLabel(cell, puzzle.width)}`);
     renderStatus(`Compass clue placed on ${cellLabel(cell, puzzle.width)}.`, "good");
     render();
     return;
@@ -603,8 +739,7 @@ function handleCellClick(cell) {
       renderStatus(`No removable clue on ${cellLabel(cell, puzzle.width)}.`, "warn");
       return;
     }
-    puzzle = removeClueById(clue.id);
-    clearComputed();
+    commitPuzzle(removeClueById(clue.id), `Removed clue from ${cellLabel(cell, puzzle.width)}`);
     renderStatus("Clue removed.", "good");
     render();
   }
@@ -634,23 +769,33 @@ function handleRelationCellClick(cell) {
     render();
     return;
   }
-  puzzle = upsertRelationClue(ruleId, relationFirstCell, cell);
-  clearComputed();
+  commitPuzzle(upsertRelationClue(ruleId, relationFirstCell, cell), `Placed ${ruleLabel(ruleId)} relation clue`);
   renderStatus(`${ruleLabel(ruleId)} relation clue placed.`, "good");
   relationFirstCell = null;
   render();
 }
 
-function updateRulesFromForm(doRender = true) {
-  puzzle.rules.area = Math.max(0, Number(el.areaInput.value) || 0);
-  puzzle.rules.roseLabels = String(el.roseInput.value ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-  puzzle.rules.allowRotations = el.rotationsInput.checked;
-  puzzle.rules.allowReflections = el.reflectionsInput.checked;
-  puzzle.rules.shapeEquivalenceAllowRotations = el.shapeEquivRotationsInput.checked;
-  puzzle.rules.shapeEquivalenceAllowReflections = el.shapeEquivReflectionsInput.checked;
-  puzzle.rules.shapeBankText = el.shapeBankInput.value;
-  puzzle = normalizePuzzle(puzzle);
-  clearComputed();
+function updateRulesFromForm(doRender = true, options = {}) {
+  const next = {
+    ...puzzle,
+    rules: {
+      ...puzzle.rules,
+      area: Math.max(0, Number(el.areaInput.value) || 0),
+      roseLabels: String(el.roseInput.value ?? "").toUpperCase().replace(/[^A-Z0-9]/g, ""),
+      allowRotations: el.rotationsInput.checked,
+      allowReflections: el.reflectionsInput.checked,
+      shapeEquivalenceAllowRotations: el.shapeEquivRotationsInput.checked,
+      shapeEquivalenceAllowReflections: el.shapeEquivReflectionsInput.checked,
+      shapeBankText: el.shapeBankInput.value
+    }
+  };
+  if (options.recordHistory === false) {
+    puzzle = normalizePuzzle(next);
+    puzzleHistory = { ...puzzleHistory, present: cloneState(puzzle) };
+    clearComputed();
+  } else {
+    commitPuzzle(next, options.label ?? "Updated rule settings");
+  }
   if (doRender) render();
 }
 
@@ -668,19 +813,20 @@ function syncFormFromPuzzle() {
   updateRelationHint();
 }
 
-function setCurrentTool(tool) {
+function setCurrentTool(tool, doRender = true) {
   currentTool = tool;
   if (tool !== "relation") relationFirstCell = null;
   document.querySelectorAll(".tool").forEach((button) => {
     button.classList.toggle("active", button.dataset.tool === tool);
   });
   updateRelationHint();
-  render();
+  if (doRender) render();
 }
 
 function setRuleEnabled(id, enabled) {
   const rule = RULE_REGISTRY[id];
   if (!rule?.implemented) return;
+  const previous = cloneState(puzzle);
 
   if (enabled) {
     enableRule(id);
@@ -688,9 +834,9 @@ function setRuleEnabled(id, enabled) {
     disableRule(id);
   }
 
-  puzzle = normalizePuzzle(puzzle);
-  clearComputed();
-  syncFormFromPuzzle();
+  const next = normalizePuzzle(puzzle);
+  puzzle = previous;
+  commitPuzzle(next, `${enabled ? "Enabled" : "Disabled"} ${rule.label}`, { syncForm: true });
   render();
 }
 
@@ -716,39 +862,39 @@ function enableRule(id) {
   }
   if (id === "area_number") {
     puzzle.rules.area_number = puzzle.rules.area_number ?? {};
-    setCurrentTool("areaNumber");
+    setCurrentTool("areaNumber", false);
     return;
   }
   if (id === "polyomino") {
     puzzle.rules.polyomino = puzzle.rules.polyomino ?? {};
-    setCurrentTool("polyomino");
+    setCurrentTool("polyomino", false);
     return;
   }
   if (id === "palisade") {
     puzzle.rules.palisade = puzzle.rules.palisade ?? {};
-    setCurrentTool("palisade");
+    setCurrentTool("palisade", false);
     return;
   }
   if (id === "compass") {
     puzzle.rules.compass = puzzle.rules.compass ?? {};
-    setCurrentTool("compass");
+    setCurrentTool("compass", false);
     return;
   }
   if (id === "watchtower") {
     puzzle.rules.watchtower = puzzle.rules.watchtower ?? {};
-    setCurrentTool("watchtower");
+    setCurrentTool("watchtower", false);
     return;
   }
   if (id === "gemini" || id === "delta" || id === "difference") {
     puzzle.rules[id] = puzzle.rules[id] ?? {};
     el.relationRuleInput.value = id;
-    setCurrentTool("relation");
+    setCurrentTool("relation", false);
     return;
   }
   if (id === "inequality") {
     puzzle.rules.inequality = puzzle.rules.inequality ?? {};
     el.relationRuleInput.value = "inequality";
-    setCurrentTool("relation");
+    setCurrentTool("relation", false);
     return;
   }
   if (id === "range") {
@@ -784,9 +930,7 @@ function disableRule(id) {
 function updateMingleOption(option, checked) {
   const config = { ...(puzzle.rules.mingle_shape ?? {}) };
   config[option] = checked;
-  puzzle.rules.mingle_shape = config;
-  puzzle = normalizePuzzle(puzzle);
-  clearComputed();
+  commitPuzzle({ ...puzzle, rules: { ...puzzle.rules, mingle_shape: config } }, "Changed Mingle Shape options");
   render();
 }
 
@@ -795,9 +939,7 @@ function updateRangeOption(option, value) {
   const number = Number(value);
   if (value === "") delete config[option];
   else config[option] = Number.isInteger(number) ? number : value;
-  puzzle.rules.range = config;
-  puzzle = normalizePuzzle(puzzle);
-  clearComputed();
+  commitPuzzle({ ...puzzle, rules: { ...puzzle.rules, range: config } }, "Changed Range options");
   render();
 }
 
@@ -812,7 +954,47 @@ function clearComputed() {
   el.applyStepButton.disabled = true;
 }
 
+function commitPuzzle(nextPuzzle, label = "Edited puzzle", options = {}) {
+  const normalized = normalizePuzzle(nextPuzzle);
+  puzzleHistory = recordHistory(puzzleHistory, normalized, label);
+  puzzle = cloneState(puzzleHistory.present);
+  lastChangeDescription = label;
+  clearComputed();
+  if (options.syncForm) syncFormFromPuzzle();
+  renderHistoryControls();
+}
+
+function undoPuzzleEdit() {
+  if (!canUndo(puzzleHistory)) return;
+  puzzleHistory = undoHistory(puzzleHistory);
+  puzzle = cloneState(puzzleHistory.present);
+  lastChangeDescription = `Undo: ${puzzleHistory.lastLabel}`;
+  selectedClueId = null;
+  clearComputed();
+  syncFormFromPuzzle();
+  renderStatus(lastChangeDescription, "warn");
+  render();
+}
+
+function redoPuzzleEdit() {
+  if (!canRedo(puzzleHistory)) return;
+  puzzleHistory = redoHistory(puzzleHistory);
+  puzzle = cloneState(puzzleHistory.present);
+  lastChangeDescription = `Redo: ${puzzleHistory.lastLabel}`;
+  selectedClueId = null;
+  clearComputed();
+  syncFormFromPuzzle();
+  renderStatus(lastChangeDescription, "warn");
+  render();
+}
+
+function renderHistoryControls() {
+  el.undoButton.disabled = !canUndo(puzzleHistory);
+  el.redoButton.disabled = !canRedo(puzzleHistory);
+}
+
 function render() {
+  renderHistoryControls();
   renderBoard();
   renderToolBanner();
   renderRulePalette();
@@ -1075,6 +1257,9 @@ function renderValidation() {
   for (const error of validationErrors) {
     groups[categorizeValidationMessage(error)].push(actionableValidationMessage(error));
   }
+  if ((validationErrors.length > 0 || Object.values(groups).some((items) => items.length > 0)) && lastChangeDescription) {
+    groups["Solver / candidate-source issues"].push(`Latest change: ${lastChangeDescription}.`);
+  }
 
   const messages = Object.entries(groups).filter(([, items]) => items.length > 0);
   if (messages.length === 0) {
@@ -1101,6 +1286,24 @@ function actionableValidationMessage(message) {
   if (/Unknown rule id/i.test(message)) return `${message} Remove it from JSON or add a supported registry entry.`;
   if (/not implemented/i.test(message)) return `${message} Disable this rule before solving.`;
   return message;
+}
+
+function validationReportText() {
+  const validation = validatePuzzle(puzzle);
+  const lines = [
+    "Glimmith validation report",
+    `Latest change: ${lastChangeDescription}`,
+    `Board: ${puzzle.width}x${puzzle.height}`,
+    `Active rules: ${Object.values(RULE_REGISTRY).filter((rule) => isRuleActive(rule.id)).map((rule) => rule.label).join(", ") || "none"}`,
+    ""
+  ];
+  if (validation.errors.length === 0) {
+    lines.push("No validation issues.");
+  } else {
+    lines.push("Validation issues:");
+    for (const error of validation.errors) lines.push(`- ${actionableValidationMessage(error)}`);
+  }
+  return lines.join("\n");
 }
 
 function renderInspector() {
@@ -1272,6 +1475,8 @@ function renderBoard() {
   const regionByCell = currentSolution?.regionByCell ?? {};
   const stepEdgeKey = lastStep?.edge ? edgeKey(lastStep.edge[0], lastStep.edge[1]) : null;
   const cellClues = cellCluesByCell();
+  el.boardSvg.style.setProperty("--grid-opacity", String(traceImage.gridOpacity));
+  el.boardSvg.style.setProperty("--trace-cell-opacity", String(traceImage.cellOpacity));
 
   let html = "";
   html += `<rect x="0" y="0" width="${widthPx}" height="${heightPx}" rx="12" fill="var(--board-bg)"></rect>`;
@@ -1627,6 +1832,9 @@ function updateTraceFromForm() {
   traceImage.y = Number(el.screenshotYInput.value) || 0;
   traceImage.scale = clamp(Number(el.screenshotScaleInput.value) || 1, 0.1, 5);
   traceImage.rotation = Number(el.screenshotRotationInput.value) || 0;
+  traceImage.locked = Boolean(el.screenshotLockInput.checked);
+  traceImage.gridOpacity = clamp(Number(el.gridOpacityInput.value), 0, 1);
+  traceImage.cellOpacity = clamp(Number(el.cellFillOpacityInput.value), 0, 1);
 }
 
 function updateTraceControls() {
@@ -1635,6 +1843,14 @@ function updateTraceControls() {
   el.screenshotYInput.value = String(traceImage.y);
   el.screenshotScaleInput.value = String(traceImage.scale);
   el.screenshotRotationInput.value = String(traceImage.rotation);
+  el.screenshotLockInput.checked = traceImage.locked;
+  el.gridOpacityInput.value = String(traceImage.gridOpacity);
+  el.cellFillOpacityInput.value = String(traceImage.cellOpacity);
+  for (const input of [el.screenshotXInput, el.screenshotYInput, el.screenshotScaleInput, el.screenshotRotationInput]) {
+    input.disabled = traceImage.locked;
+  }
+  el.fitScreenshotButton.disabled = traceImage.locked;
+  el.resetScreenshotButton.disabled = traceImage.locked;
 }
 
 function updateRelationHint() {
