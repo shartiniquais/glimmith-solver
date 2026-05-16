@@ -18,14 +18,14 @@ const DEFAULT_MAX_CANDIDATES = 80000;
 export function generateCandidates(puzzle, options = {}) {
   const maxCandidates = options.maxCandidates ?? DEFAULT_MAX_CANDIDATES;
   const context = options.context ?? createRuleContext(puzzle, options);
-  const { shapes, errors } = shapeBankEntriesForGeneration(puzzle);
+  const plan = buildCandidateGenerationPlan(puzzle, context);
+  const errors = [...plan.errors];
   const raw = [];
-  const precisionArea = context.ruleConfigs.precision?.area ?? 0;
 
-  if (shapes.length > 0) {
-    raw.push(...generateShapePlacementCandidates(puzzle, shapes, maxCandidates));
-  } else if (precisionArea > 0) {
-    raw.push(...generateConnectedCandidates(puzzle, precisionArea, maxCandidates));
+  if (plan.kind === "shape_bank") {
+    raw.push(...generateShapePlacementCandidates(puzzle, plan.shapes, maxCandidates));
+  } else if (plan.kind === "fixed_area") {
+    raw.push(...generateConnectedCandidates(puzzle, plan.area, maxCandidates));
   } else {
     errors.push("Set a Precision area or provide a shape bank before solving.");
   }
@@ -48,6 +48,38 @@ export function generateCandidates(puzzle, options = {}) {
   }
 
   return { candidates: filtered, errors };
+}
+
+export function buildCandidateGenerationPlan(puzzle, context = createRuleContext(puzzle)) {
+  const { shapes, errors } = shapeBankEntriesForGeneration(puzzle);
+  if (shapes.length > 0) {
+    return {
+      kind: "shape_bank",
+      ruleId: "shape_bank",
+      shapes,
+      errors
+    };
+  }
+
+  const precisionArea = context.ruleConfigs.precision?.area ?? 0;
+  if (precisionArea > 0) {
+    return {
+      kind: "fixed_area",
+      ruleId: "precision",
+      area: precisionArea,
+      errors
+    };
+  }
+
+  // Extension point for Step 02:
+  // area_number and polyomino can provide bounded candidate sources here once
+  // their solver modules are implemented. Keep this as a source plan instead
+  // of hardcoding those clue mechanics inside the exact-cover search.
+  return {
+    kind: "missing_source",
+    ruleId: null,
+    errors
+  };
 }
 
 function makeCandidate(indexes, width, height, source, sourceName = "") {

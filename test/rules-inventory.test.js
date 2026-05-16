@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { RULE_REGISTRY } from "../src/core/rules/registry.js";
 
 const inventory = JSON.parse(
   readFileSync(new URL("../docs/rules-inventory.json", import.meta.url), "utf8"),
@@ -60,6 +61,14 @@ test("rule inventory records top-level implementation policy", () => {
   assert.match(inventory.implementationPolicy.shapeComparison, /reflection/i);
   assert.match(inventory.implementationPolicy.relationClues, /constraints between two regions/i);
   assert.match(inventory.implementationPolicy.relationClues, /not as simple edge states only/i);
+});
+
+test("every inventory rule id is represented in RULE_REGISTRY", () => {
+  const missing = inventory.rules
+    .map((rule) => rule.id)
+    .filter((id) => !RULE_REGISTRY[id]);
+
+  assert.deepEqual(missing, []);
 });
 
 test("ready rules expose rule-engine implementation constraints", () => {

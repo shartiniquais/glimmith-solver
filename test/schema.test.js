@@ -47,6 +47,18 @@ test("legacy edge relation is represented as a generic relation clue", () => {
   assert.equal(result.status, "unique_solution");
 });
 
+test("legacy differentShape edge relation becomes a Delta relation clue", () => {
+  let puzzle = createPuzzle(2, 2);
+  puzzle.rules.area = 2;
+  puzzle = setEdgeRelation(puzzle, 0, 1, "differentShape");
+
+  const clue = puzzle.clues.find((item) => item.ruleId === "delta");
+  assert.ok(clue);
+  assert.equal(clue.type, "relation");
+  assert.deepEqual(clue.location, { type: "edge", cells: [0, 1] });
+  assert.deepEqual(clue.regionRefs, [{ cell: 0 }, { cell: 1 }]);
+});
+
 test("validation reports unknown rules, blocked rules, invalid clues, and impossible masks", () => {
   const result = validatePuzzle({
     version: 2,
@@ -83,6 +95,44 @@ test("validation reports unknown rules, blocked rules, invalid clues, and imposs
   assert.match(result.errors.join("\n"), /Rule "compass".*semantics are unverified/);
   assert.match(result.errors.join("\n"), /Relation clue "bad_relation".*outside the board/);
   assert.match(result.errors.join("\n"), /Shape Bank entry "TooBig" has more cells than the active board/);
+});
+
+test("validation distinguishes unknown, ready-unimplemented, and blocked rules", () => {
+  const unknown = validatePuzzle({
+    width: 1,
+    height: 1,
+    rules: {
+      imaginary_rule: {}
+    }
+  });
+  assert.match(unknown.errors.join("\n"), /Unknown rule id "imaginary_rule"/);
+
+  for (const id of ["area_number", "polyomino", "mingle_shape"]) {
+    const result = validatePuzzle({
+      width: 1,
+      height: 1,
+      rules: {
+        [id]: {}
+      }
+    });
+    assert.doesNotMatch(result.errors.join("\n"), /Unknown rule id/);
+    assert.match(
+      result.errors.join("\n"),
+      new RegExp(`Rule "${id}" is known and ready for implementation, but not implemented in the solver yet\\.`),
+    );
+  }
+
+  for (const id of ["palisade", "bricky", "loopy", "compass", "watchtower"]) {
+    const result = validatePuzzle({
+      width: 1,
+      height: 1,
+      rules: {
+        [id]: {}
+      }
+    });
+    assert.doesNotMatch(result.errors.join("\n"), /Unknown rule id/);
+    assert.match(result.errors.join("\n"), /not implemented because its semantics are unverified/);
+  }
 });
 
 test("blocked rules are rejected by the solver with a clear validation message", () => {

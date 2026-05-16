@@ -91,6 +91,8 @@ Manual `cut`/`join` edge constraints are handled by `edgeConstraintsRule`. They 
 
 Candidate generation lives in `src/core/candidates.js`. Pairwise/global incompatibility storage lives in `src/core/constraints.js`.
 
+`buildCandidateGenerationPlan(puzzle, context)` is the candidate-source extension point. Today it chooses reusable Shape Bank placements or fixed-area Precision regions. Step 02 rules such as Area Number and Polyomino should extend that source plan or add local candidate filters there, without adding rule-specific logic to the exact-cover search.
+
 ## Validation
 
 `validatePuzzle(rawPuzzle)` in `src/core/validation.js` reports:
@@ -118,4 +120,3 @@ Blocked rules from the research inventory, such as Palisade, Bricky, Loopy, Comp
 6. Add tests that prove the rule eliminates an otherwise valid solution.
 
 Do not add guessed blocked-rule mechanics. Start with validation and UI placeholders until the rule's exact semantics are verified.
-

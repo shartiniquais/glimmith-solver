@@ -24,6 +24,12 @@ const experimentalRules = [
   ["solitude", "Solitude"]
 ];
 
+const readyNotImplementedRules = [
+  ["polyomino", "Polyomino"],
+  ["mingle_shape", "Mingle Shape"],
+  ["area_number", "Area Number"]
+];
+
 const blockedRules = [
   ["palisade", "Palisade"],
   ["bricky", "Bricky"],
@@ -39,6 +45,7 @@ export const RULE_REGISTRY = Object.freeze({
   gemini: geminiRule,
   delta: deltaRule,
   difference: differenceRule,
+  ...Object.fromEntries(readyNotImplementedRules.map(([id, label]) => [id, unimplementedRule(id, label, "ready")])),
   ...Object.fromEntries(experimentalRules.map(([id, label]) => [id, unimplementedRule(id, label, "experimental")])),
   ...Object.fromEntries(blockedRules.map(([id, label]) => [id, unimplementedRule(id, label, "blocked")]))
 });
@@ -102,6 +109,9 @@ function unimplementedRule(id, label, implementationStatus) {
     implemented: false,
     validatePuzzle(context) {
       if (!context.ruleConfigs[id]) return [];
+      if (implementationStatus === "ready") {
+        return [`Rule "${id}" is known and ready for implementation, but not implemented in the solver yet.`];
+      }
       const reason =
         implementationStatus === "blocked"
           ? "not implemented because its semantics are unverified"
@@ -110,4 +120,3 @@ function unimplementedRule(id, label, implementationStatus) {
     }
   };
 }
-
