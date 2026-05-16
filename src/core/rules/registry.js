@@ -1,7 +1,9 @@
 import { areaNumberRule } from "./area-number.js";
 import { boxyRule, nonBoxyRule } from "./area-shape-filters.js";
+import { brickyRule } from "./bricky.js";
 import { compassRule } from "./compass.js";
 import { inequalityRule } from "./inequality.js";
+import { loopyRule } from "./loopy.js";
 import { deltaRule, differenceRule, geminiRule } from "./relations.js";
 import { mingleShapeRule } from "./mingle-shape.js";
 import { palisadeRule } from "./palisade.js";
@@ -25,10 +27,7 @@ export const LEGACY_RULE_KEYS = new Set([
   "shapeEquivalenceAllowReflections"
 ]);
 
-const readyUnimplementedRules = [
-  ["bricky", "Bricky"],
-  ["loopy", "Loopy"]
-];
+const readyUnimplementedRules = [];
 
 export const RULE_REGISTRY = Object.freeze({
   precision: precisionRule,
@@ -49,6 +48,8 @@ export const RULE_REGISTRY = Object.freeze({
   non_boxy: nonBoxyRule,
   inequality: inequalityRule,
   palisade: palisadeRule,
+  bricky: brickyRule,
+  loopy: loopyRule,
   compass: compassRule,
   watchtower: watchtowerRule,
   ...Object.fromEntries(readyUnimplementedRules.map(([id, label]) => [id, unimplementedRule(id, label, "ready")]))

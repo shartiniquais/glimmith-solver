@@ -466,6 +466,42 @@ test("Solitude counts Palisade and Compass cell clues", () => {
   assert.equal(rejected.status, "no_solution");
 });
 
+test("Bricky forbids degree-4 boundary vertices only", () => {
+  const fourWay = createPuzzle(2, 2);
+  fourWay.rules.area = 1;
+  fourWay.rules.bricky = {};
+  const fourWayRejected = solvePuzzle(fourWay, { limit: 2 });
+  assert.equal(fourWayRejected.status, "no_solution");
+
+  const tJunction = forcedTJunctionPuzzle("bricky");
+  const allowed = solvePuzzle(tJunction, { limit: 2 });
+  assert.equal(allowed.status, "unique_solution");
+  assert.deepEqual(allowed.solutions[0].regions.map((region) => region.cells), [[0, 1], [2], [3]]);
+});
+
+test("Loopy forbids degree-3 boundary vertices only", () => {
+  const tJunction = forcedTJunctionPuzzle("loopy");
+  const rejected = solvePuzzle(tJunction, { limit: 2 });
+  assert.equal(rejected.status, "no_solution");
+
+  const fourWay = diagonalDegreeFourPuzzle("loopy");
+  const allowed = solvePuzzle(fourWay, { limit: 2 });
+  assert.equal(allowed.status, "unique_solution");
+  assert.equal(allowed.solutions[0].regions.length, 2);
+});
+
+test("Bricky and Loopy together reject degree-3 and degree-4 boundary vertices", () => {
+  const tJunction = forcedTJunctionPuzzle("bricky");
+  tJunction.rules.loopy = {};
+  const tRejected = solvePuzzle(tJunction, { limit: 2 });
+  assert.equal(tRejected.status, "no_solution");
+
+  const fourWay = diagonalDegreeFourPuzzle("bricky");
+  fourWay.rules.loopy = {};
+  const fourRejected = solvePuzzle(fourWay, { limit: 2 });
+  assert.equal(fourRejected.status, "no_solution");
+});
+
 function mirroredMinglePuzzle(mingleConfig) {
   const puzzle = mirroredShapePuzzle();
   puzzle.rules.mingle_shape = mingleConfig;
@@ -483,6 +519,28 @@ function forcedMixedTriominoPuzzle() {
   puzzle = setEdgeState(puzzle, 1, 4, "join");
   puzzle = setEdgeState(puzzle, 0, 1, "cut");
   puzzle = setEdgeState(puzzle, 3, 4, "cut");
+  return puzzle;
+}
+
+function forcedTJunctionPuzzle(ruleId) {
+  let puzzle = createPuzzle(2, 2);
+  puzzle.rules.area = 0;
+  puzzle.rules[ruleId] = {};
+  puzzle.clues = [
+    { id: "top_domino", type: "cell", ruleId: "area_number", value: 2, location: { type: "cell", cell: 0 } },
+    { id: "bottom_left", type: "cell", ruleId: "area_number", value: 1, location: { type: "cell", cell: 2 } },
+    { id: "bottom_right", type: "cell", ruleId: "area_number", value: 1, location: { type: "cell", cell: 3 } }
+  ];
+  puzzle = setEdgeState(puzzle, 0, 1, "join");
+  return puzzle;
+}
+
+function diagonalDegreeFourPuzzle(ruleId) {
+  const puzzle = createPuzzle(2, 2);
+  puzzle.rules.area = 1;
+  puzzle.rules[ruleId] = {};
+  puzzle.active = [true, false, false, true];
+  puzzle.activeCells = [0, 3];
   return puzzle;
 }
 

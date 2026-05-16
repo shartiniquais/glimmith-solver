@@ -132,7 +132,7 @@ test("edge relation clues can use adjacent edge locations as region references",
   }
 });
 
-test("validation reports unknown rules, ready-unimplemented rules, invalid clues, and impossible masks", () => {
+test("validation reports unknown rules, invalid clues, and impossible masks", () => {
   const result = validatePuzzle({
     version: 2,
     width: 2,
@@ -165,12 +165,11 @@ test("validation reports unknown rules, ready-unimplemented rules, invalid clues
   assert.match(result.errors.join("\n"), /Symbol cell 3 is not active/);
   assert.match(result.errors.join("\n"), /must reference orthogonally adjacent cells/);
   assert.match(result.errors.join("\n"), /Unknown rule id "unknown_rule"/);
-  assert.match(result.errors.join("\n"), /Rule "bricky" is known and ready for implementation, but not implemented in the solver yet/);
   assert.match(result.errors.join("\n"), /Relation clue "bad_relation".*outside the board/);
   assert.match(result.errors.join("\n"), /Shape Bank entry "TooBig" has more cells than the active board/);
 });
 
-test("validation distinguishes unknown and ready-unimplemented rules", () => {
+test("validation distinguishes unknown and implemented known rules", () => {
   const unknown = validatePuzzle({
     width: 1,
     height: 1,
@@ -232,26 +231,23 @@ test("validation distinguishes unknown and ready-unimplemented rules", () => {
   });
   assert.equal(watchtower.ok, true);
 
-  for (const id of ["bricky", "loopy"]) {
-    const result = validatePuzzle({
-      width: 1,
-      height: 1,
-      rules: {
-        [id]: {}
-      }
-    });
-    assert.doesNotMatch(result.errors.join("\n"), /Unknown rule id/);
-    assert.match(result.errors.join("\n"), /known and ready for implementation, but not implemented in the solver yet/);
-  }
-});
+  const bricky = validatePuzzle({
+    width: 1,
+    height: 1,
+    rules: {
+      bricky: {}
+    }
+  });
+  assert.equal(bricky.ok, true);
 
-test("ready-unimplemented rules are rejected by the solver with a clear validation message", () => {
-  const puzzle = createPuzzle(2, 2);
-  puzzle.rules.bricky = {};
-
-  const result = solvePuzzle(puzzle);
-  assert.equal(result.status, "no_solution");
-  assert.match(result.errors.join("\n"), /Rule "bricky" is known and ready for implementation, but not implemented in the solver yet/);
+  const loopy = validatePuzzle({
+    width: 1,
+    height: 1,
+    rules: {
+      loopy: {}
+    }
+  });
+  assert.equal(loopy.ok, true);
 });
 
 test("Palisade, Compass, and Watchtower validate rule-specific clue data", () => {

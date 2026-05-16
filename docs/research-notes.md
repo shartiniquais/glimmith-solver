@@ -46,13 +46,12 @@ Implemented now:
 - `palisade`
 - `compass`
 - `watchtower`
-
-Ready but not implemented:
-
 - `bricky`
 - `loopy`
 
-There are no blocked rules left in the current inventory. Ready-but-not-implemented rules should be treated as known rules and rejected with a clear "known and ready, but not implemented" message until solver work is added.
+Ready but not implemented: none.
+
+There are no blocked rules left in the current inventory, and all known inventory rules are implemented.
 
 ## Confirmed Rule Families
 
@@ -117,11 +116,10 @@ Implemented in the current candidate/constraint solver:
 - `palisade`
 - `compass`
 - `watchtower`
-
-Still deferred because they need global boundary-degree geometry beyond the current batch:
-
 - `bricky`
 - `loopy`
+
+Still deferred: none.
 
 Implementation model categories:
 
@@ -157,5 +155,6 @@ Boundary or vertex selection constraints:
 - `watchtower`
 
 Watchtower is implemented as a selected-candidate validator rather than a candidate filter, because its count depends on how multiple selected regions meet at a vertex.
+Bricky and Loopy also use selected-candidate validation. Bricky only forbids degree 4 vertices; Loopy only forbids degree 3 vertices and does not require all borders to form a loop.
 
-Do not guess solver logic beyond these confirmed mechanics. Deferred rules should first receive validation/schema/UI support, then focused solver implementations with tests that prove each rule eliminates an otherwise valid solution.
+Do not guess solver logic beyond these confirmed mechanics. Future rules should first receive validation/schema/UI support, then focused solver implementations with tests that prove each rule eliminates an otherwise valid solution.

@@ -1,0 +1,54 @@
+{
+  "fixtures": [
+    {
+      "name": "loopy-allows-four-way-center-unique",
+      "rulesCovered": ["loopy"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 2,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "activeCells": [0, 3],
+        "rules": { "area": 1, "loopy": {} }
+      }
+    },
+    {
+      "name": "loopy-rejects-t-junction",
+      "rulesCovered": ["loopy"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "rules": { "area": 0, "loopy": {} },
+        "clues": [
+          { "id": "top_domino", "type": "cell", "ruleId": "area_number", "value": 2, "location": { "type": "cell", "cell": 0 } },
+          { "id": "bottom_left", "type": "cell", "ruleId": "area_number", "value": 1, "location": { "type": "cell", "cell": 2 } },
+          { "id": "bottom_right", "type": "cell", "ruleId": "area_number", "value": 1, "location": { "type": "cell", "cell": 3 } }
+        ],
+        "edgeConstraints": {
+          "0-1": { "state": "join" }
+        }
+      }
+    },
+    {
+      "name": "loopy-invalid-duplicate-active-cell",
+      "rulesCovered": ["loopy"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["appears more than once"],
+      "puzzle": {
+        "width": 1,
+        "height": 1,
+        "activeCells": [0, 0],
+        "rules": { "area": 1, "loopy": {} }
+      }
+    }
+  ]
+}

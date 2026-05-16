@@ -883,7 +883,7 @@
         "This corresponds to four region corners meeting.",
         "It can include outer border, but outer border usually cannot reach 4."
       ],
-      "implemented": false,
+      "implemented": true,
       "confirmation": {
         "basis": "user_confirmed_in_game_observation",
         "date": "2026-05-16",
@@ -935,7 +935,7 @@
         "It cares about outer boundary.",
         "If Loopy is active but Bricky is not, degree 4 vertices are allowed."
       ],
-      "implemented": false,
+      "implemented": true,
       "confirmation": {
         "basis": "user_confirmed_in_game_observation",
         "date": "2026-05-16",

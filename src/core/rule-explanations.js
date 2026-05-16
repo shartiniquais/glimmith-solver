@@ -89,6 +89,16 @@ export const RULE_EXPLANATION_SNIPPETS = Object.freeze({
     clueSatisfied: "The clue cell has the required side-border pattern.",
     clueUnsatisfied: "The clue cell does not have the required side-border pattern."
   },
+  bricky: {
+    pairIncompatible: "Bricky forbids exactly four border segments meeting at a grid vertex.",
+    clueSatisfied: "No grid vertex has four border segments meeting.",
+    clueUnsatisfied: "A grid vertex has four border segments meeting."
+  },
+  loopy: {
+    pairIncompatible: "Loopy forbids exactly three border segments meeting at a grid vertex.",
+    clueSatisfied: "No grid vertex has exactly three border segments meeting.",
+    clueUnsatisfied: "A grid vertex has exactly three border segments meeting."
+  },
   compass: {
     candidateViolation: "The candidate does not match the Compass directional counts.",
     clueSatisfied: "The clue's region has the required directional counts.",

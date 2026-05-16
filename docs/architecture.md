@@ -62,7 +62,7 @@ A rule module can provide:
 }
 ```
 
-Only implemented rules should affect solving. Ready-but-not-implemented rules are registered so validation can reject them clearly as known unsupported rules instead of treating them as unknown IDs. There are currently no blocked rules in the inventory after the 2026-05-16 user-confirmed mechanics update.
+Only implemented rules should affect solving. If a future ready-but-not-implemented rule is added, it should be registered so validation can reject it clearly as a known unsupported rule instead of treating it as an unknown ID. There are currently no blocked rules in the inventory after the 2026-05-16 user-confirmed mechanics update, and all known inventory rules are implemented.
 
 Currently implemented rule modules:
 
@@ -86,6 +86,8 @@ Currently implemented rule modules:
 - `palisade`: cell clue requiring a specific side-border pattern around the clue cell.
 - `compass`: cell clue counting own-region cells in N/E/S/W half-planes.
 - `watchtower`: vertex clue counting distinct selected regions touching a grid vertex.
+- `bricky`: boundary-vertex rule forbidding exactly four border segments meeting at a vertex.
+- `loopy`: boundary-vertex rule forbidding exactly three border segments meeting at a vertex.
 
 Manual `cut`/`join` edge constraints are handled by `edgeConstraintsRule`. They are editor givens, not Glimmith rule cards.
 
@@ -107,7 +109,7 @@ Manual `cut`/`join` edge constraints are handled by `edgeConstraintsRule`. They 
 9. Extract solutions using the configured shape-comparison equivalence.
 
 Candidate generation lives in `src/core/candidates.js`. Pairwise/global incompatibility storage lives in `src/core/constraints.js`.
-Rules that cannot be expressed as pairwise incompatibilities can add selection validators through the same constraint model. The solver calls those validators during exact-cover search and at completion. Watchtower uses this hook to count distinct selected regions touching a vertex.
+Rules that cannot be expressed as pairwise incompatibilities can add selection validators through the same constraint model. The solver calls those validators during exact-cover search and at completion. Watchtower uses this hook to count distinct selected regions touching a vertex; Bricky and Loopy use it to reject completed partitions with forbidden boundary-vertex degrees.
 
 Local side and vertex geometry helpers live in `src/core/boundary.js`.
 
@@ -125,7 +127,7 @@ Local side and vertex geometry helpers live in `src/core/boundary.js`.
 - impossible legacy or v2 board masks,
 - ready-but-not-implemented rule IDs.
 
-Ready-but-not-implemented rules from the inventory, currently Bricky and Loopy, should not affect solving until their modules are implemented. If they appear in puzzle data, solving returns `no_solution` with a known-ready/not-implemented message. UI placeholders are acceptable only if they do not imply solver support.
+There are no ready-but-not-implemented inventory rules at this point. Future unsupported rules should not affect solving until their modules are implemented; if they appear in puzzle data, solving should return `no_solution` with a known-ready/not-implemented message.
 
 ## Adding A Rule
 

@@ -26,6 +26,10 @@ The solver now has registered, data-driven implementations for:
 - `palisade`: cell clue requiring a local side-border pattern around the clue cell.
 - `compass`: cell clue counting own-region cells in N/E/S/W half-planes.
 - `watchtower`: vertex clue counting distinct selected regions touching a grid vertex.
+- `bricky`: global boundary-vertex rule forbidding exactly four border segments meeting at a grid vertex.
+- `loopy`: global boundary-vertex rule forbidding exactly three border segments meeting at a grid vertex.
+
+All known inventory rules are now implemented.
 
 `area_number`, `polyomino`, and `range` can also act as candidate sources when there is no Precision area and no Shape Bank:
 
@@ -103,9 +107,21 @@ Watchtower clue:
 }
 ```
 
+Bricky and Loopy are global rule toggles with no clue payload:
+
+```js
+{
+  rules: {
+    bricky: {},
+    loopy: {}
+  }
+}
+```
+
+Bricky only forbids degree 4 boundary vertices. Loopy only forbids degree 3 boundary vertices; it does not require loop formation and does not forbid degree 4 unless Bricky is also active.
+
 ## Remaining Limitations
 
 - Area Number candidate sourcing is conservative: without Precision or Shape Bank, it generates candidates for clue areas. Puzzles with unclued regions of other sizes will need another candidate source.
 - Polyomino candidate sourcing uses clue shapes as reusable placement sources. If later evidence shows consumable or grouped shape behavior, that should be added explicitly.
-- Bricky and Loopy remain validation-only and are rejected by the solver with a known-ready/not-implemented message until their boundary-graph modules are added.
 - Solitude currently counts Palisade and Compass as cell clues. Watchtower is a vertex clue and does not count for Solitude in the current implementation.

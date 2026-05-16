@@ -108,11 +108,13 @@ test("implemented flags separate solver support from ready mechanics", () => {
   assert.deepEqual(implemented, [
     "area_number",
     "boxy",
+    "bricky",
     "compass",
     "delta",
     "difference",
     "gemini",
     "inequality",
+    "loopy",
     "match",
     "mingle_shape",
     "mismatch",
@@ -132,8 +134,5 @@ test("implemented flags separate solver support from ready mechanics", () => {
     .filter((rule) => rule.implementationStatus === "ready" && !rule.implemented)
     .map((rule) => rule.id)
     .sort();
-  assert.deepEqual(readyNotImplemented, [
-    "bricky",
-    "loopy",
-  ]);
+  assert.deepEqual(readyNotImplemented, []);
 });

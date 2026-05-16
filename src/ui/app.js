@@ -690,7 +690,7 @@ function enableRule(id) {
     puzzle.rules.range = puzzle.rules.range ?? { min: 1, max: Math.max(1, Number(puzzle.rules.area) || 4) };
     return;
   }
-  if (["match", "mismatch", "solitude", "size_separation", "boxy", "non_boxy"].includes(id)) {
+  if (["match", "mismatch", "solitude", "size_separation", "boxy", "non_boxy", "bricky", "loopy"].includes(id)) {
     puzzle.rules[id] = puzzle.rules[id] ?? {};
   }
 }
@@ -890,6 +890,9 @@ function ruleControlsHtml(id, active, disabled) {
   }
   if (id === "watchtower" && active) {
     return `<div class="rule-controls"><p>Watchtower vertex clues are supported through JSON import/export.</p></div>`;
+  }
+  if ((id === "bricky" || id === "loopy") && active) {
+    return `<div class="rule-controls"><p>Global boundary-vertex rule. No placement tool needed.</p></div>`;
   }
   if (id === "gemini" || id === "delta" || id === "difference" || id === "inequality") {
     return `<div class="rule-controls"><button type="button" data-select-tool="relation" data-relation-rule="${id}" data-status="${escapeHtml(ruleLabel(id))} relation tool selected.">Place relation clue</button></div>`;

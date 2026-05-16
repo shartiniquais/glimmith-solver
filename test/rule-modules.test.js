@@ -1,13 +1,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cellsAroundVertex, distinctRegionsTouchingVertex, palisadePatternFromSides } from "../src/core/boundary.js";
+import {
+  allVertexBorderDegrees,
+  cellsAroundVertex,
+  distinctRegionsTouchingVertex,
+  palisadePatternFromSides,
+  selectedBorderSegments,
+  vertexBorderDegree
+} from "../src/core/boundary.js";
 import { createConstraintModel } from "../src/core/constraints.js";
 import { canonicalShapeKey, maskFromIndexes } from "../src/core/geometry.js";
 import { normalizePuzzle } from "../src/core/puzzle.js";
 import { areaNumberRule } from "../src/core/rules/area-number.js";
 import { boxyRule, nonBoxyRule } from "../src/core/rules/area-shape-filters.js";
+import { brickyRule } from "../src/core/rules/bricky.js";
 import { compassCounts, compassRule } from "../src/core/rules/compass.js";
 import { inequalityRule } from "../src/core/rules/inequality.js";
+import { loopyRule } from "../src/core/rules/loopy.js";
 import { mingleShapeRule } from "../src/core/rules/mingle-shape.js";
 import { deltaRule, differenceRule, geminiRule } from "../src/core/rules/relations.js";
 import { matchRule, mismatchRule } from "../src/core/rules/shape-global.js";
@@ -307,6 +316,77 @@ test("Watchtower adds a selected-candidate validator for exact vertex counts", (
 
   const oneRegion = [{ ...candidate([0, 1, 2, 3], 2), id: 4 }];
   assert.equal(model.selectionValidators[0](oneRegion, { complete: true }), false);
+});
+
+test("Boundary helpers compute selected border segments and vertex degrees", () => {
+  const monomino = normalizePuzzle({ width: 1, height: 1 });
+  const monominoCandidates = [candidate([0], 1)];
+  assert.deepEqual(selectedBorderSegments(monominoCandidates, monomino), [
+    { orientation: "h", x: 0, y: 0 },
+    { orientation: "h", x: 0, y: 1 },
+    { orientation: "v", x: 0, y: 0 },
+    { orientation: "v", x: 1, y: 0 }
+  ]);
+  assert.equal(vertexBorderDegree(monominoCandidates, monomino, { x: 0, y: 0 }), 2);
+  assert.equal(vertexBorderDegree(monominoCandidates, monomino, { x: 1, y: 1 }), 2);
+
+  const fourMonominoes = normalizePuzzle({ width: 2, height: 2 });
+  const fourCandidates = [candidate([0], 2), candidate([1], 2), candidate([2], 2), candidate([3], 2)];
+  assert.equal(vertexBorderDegree(fourCandidates, fourMonominoes, { x: 1, y: 1 }), 4);
+
+  const tJunctionCandidates = [candidate([0, 1], 2), candidate([2], 2), candidate([3], 2)];
+  assert.equal(vertexBorderDegree(tJunctionCandidates, fourMonominoes, { x: 1, y: 1 }), 3);
+
+  const joinedBoard = normalizePuzzle({ width: 2, height: 1 });
+  assert.equal(selectedBorderSegments([candidate([0, 1], 2)], joinedBoard).length, 6);
+  assert.equal(allVertexBorderDegrees(fourCandidates, fourMonominoes).find((item) => item.x === 1 && item.y === 1)?.degree, 4);
+});
+
+test("Bricky forbids degree-4 vertices but allows degree-3 vertices", () => {
+  const puzzle = normalizePuzzle({ width: 2, height: 2, rules: { bricky: {} } });
+  const fourCandidates = [candidate([0], 2), candidate([1], 2), candidate([2], 2), candidate([3], 2)];
+  const tJunctionCandidates = [candidate([0, 1], 2), candidate([2], 2), candidate([3], 2)];
+  const model = createConstraintModel();
+
+  brickyRule.addConstraints(model, createRuleContext(puzzle, { candidates: fourCandidates }));
+
+  assert.equal(model.selectionValidators[0](fourCandidates, { complete: true }), false);
+  assert.equal(model.selectionValidators[0](tJunctionCandidates, { complete: true }), true);
+});
+
+test("Loopy forbids degree-3 vertices but allows degree-4 vertices", () => {
+  const puzzle = normalizePuzzle({ width: 2, height: 2, rules: { loopy: {} } });
+  const tJunctionCandidates = [candidate([0, 1], 2), candidate([2], 2), candidate([3], 2)];
+  const diagonalPuzzle = normalizePuzzle({ width: 2, height: 2, activeCells: [0, 3], rules: { loopy: {} } });
+  const diagonalCandidates = [candidate([0], 2), candidate([3], 2)];
+  const model = createConstraintModel();
+  const diagonalModel = createConstraintModel();
+
+  loopyRule.addConstraints(model, createRuleContext(puzzle, { candidates: tJunctionCandidates }));
+  loopyRule.addConstraints(diagonalModel, createRuleContext(diagonalPuzzle, { candidates: diagonalCandidates }));
+
+  assert.equal(model.selectionValidators[0](tJunctionCandidates, { complete: true }), false);
+  assert.equal(vertexBorderDegree(diagonalCandidates, diagonalPuzzle, { x: 1, y: 1 }), 4);
+  assert.equal(diagonalModel.selectionValidators[0](diagonalCandidates, { complete: true }), true);
+});
+
+test("Bricky and Loopy together reject degree-3 and degree-4 vertices", () => {
+  const puzzle = normalizePuzzle({ width: 2, height: 2, rules: { bricky: {}, loopy: {} } });
+  const diagonalPuzzle = normalizePuzzle({ width: 2, height: 2, activeCells: [0, 3], rules: { bricky: {}, loopy: {} } });
+  const diagonalCandidates = [candidate([0], 2), candidate([3], 2)];
+  const tJunctionCandidates = [candidate([0, 1], 2), candidate([2], 2), candidate([3], 2)];
+  const model = createConstraintModel();
+  const diagonalModel = createConstraintModel();
+  const context = createRuleContext(puzzle, { candidates: tJunctionCandidates });
+  const diagonalContext = createRuleContext(diagonalPuzzle, { candidates: diagonalCandidates });
+
+  brickyRule.addConstraints(model, context);
+  loopyRule.addConstraints(model, context);
+  brickyRule.addConstraints(diagonalModel, diagonalContext);
+  loopyRule.addConstraints(diagonalModel, diagonalContext);
+
+  assert.equal(diagonalModel.selectionValidators.every((validator) => validator(diagonalCandidates, { complete: true })), false);
+  assert.equal(model.selectionValidators.every((validator) => validator(tJunctionCandidates, { complete: true })), false);
 });
 
 test("Mingle Shape rejects orthogonally adjacent same-shape candidate pairs", () => {

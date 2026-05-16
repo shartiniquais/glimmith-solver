@@ -10,7 +10,7 @@ Implementation status means:
 - `experimental`: Mechanics are likely, but unresolved edge cases remain.
 - `blocked`: Exact semantics are not verified enough for faithful solving.
 
-Current status summary: 22 ready, 0 experimental, 0 blocked. 20 rules are implemented in the solver; 2 are ready-but-not-implemented and should validate as known but unsupported until solver work lands.
+Current status summary: 22 ready, 0 experimental, 0 blocked. All 22 known rules are implemented in the solver.
 
 ## Rule Table
 
@@ -32,8 +32,8 @@ Current status summary: 22 ready, 0 experimental, 0 blocked. 20 rules are implem
 | `size_separation` | Size Separation | ready | Yes | Global rule: edge-adjacent regions must have different areas. Corner-touching does not count. | Global Rule, Two Adjacent Regions, Numbers | Global Rule Toggle | Pairwise Candidate Incompatibility | Not Relevant | Partial | high |
 | `boxy` | Boxy | ready | Yes | Global rule: every region must be a filled rectangle. 1xN bars and single cells count as boxy; holes are not allowed. | Global Rule, One Region, Shapes | Global Rule Toggle | Candidate Filter | Not Relevant Beyond Rectangle Detection | Yes | high |
 | `non_boxy` | Non-Boxy | ready | Yes | Global rule: opposite of Boxy. Filled rectangles, bars, and single cells are forbidden. It can coexist with Shape Bank. | Global Rule, One Region, Shapes | Global Rule Toggle | Candidate Filter | Not Relevant Beyond Rectangle Detection | Yes | high |
-| `bricky` | Bricky | ready | No | Global boundary-graph rule: forbids exactly four border segments meeting at a grid vertex, corresponding to four region corners meeting. It can include outer border, though outer border usually cannot reach degree 4. | Global Rule, Boundary Graph, Grid Vertices | Global Rule Toggle | Boundary Graph Constraint | Not Relevant | Partial | high |
-| `loopy` | Loopy | ready | No | Global boundary-graph rule: forbids exactly three border segments meeting at a grid vertex. It forbids T-junctions, cares about outer boundary, does not require loops, and allows degree 4 vertices when Bricky is not active. | Global Rule, Boundary Graph, Grid Vertices | Global Rule Toggle | Boundary Graph Constraint | Not Relevant | Partial | high |
+| `bricky` | Bricky | ready | Yes | Global boundary-graph rule: forbids exactly four border segments meeting at a grid vertex, corresponding to four region corners meeting. It can include outer border, though outer border usually cannot reach degree 4. | Global Rule, Boundary Graph, Grid Vertices | Global Rule Toggle | Boundary Graph Constraint | Not Relevant | Partial | high |
+| `loopy` | Loopy | ready | Yes | Global boundary-graph rule: forbids exactly three border segments meeting at a grid vertex. It forbids T-junctions, cares about outer boundary, does not require loops, and allows degree 4 vertices when Bricky is not active. | Global Rule, Boundary Graph, Grid Vertices | Global Rule Toggle | Boundary Graph Constraint | Not Relevant | Partial | high |
 | `inequality` | Inequality | ready | Yes | Edge relation clue: compares adjacent region areas with strict inequality. The narrow/small side points to the smaller region; equality is invalid. | Edge Relation Clue, Two Adjacent Regions, Numbers | Oriented Inequality Edge Marker | Pairwise Candidate Incompatibility | Not Relevant | Partial | high |
 | `difference` | Difference | ready | Yes | Edge relation clue: compares adjacent regions by absolute area-size difference. A value of 0 means equal area, not necessarily same shape. | Edge Relation Clue, Two Adjacent Regions, Numbers | Difference Edge Relation Marker, Nonnegative Integer Difference | Pairwise Candidate Incompatibility | Not Relevant | Partial | high |
 | `watchtower` | Watchtower | ready | Yes | Vertex/corner clue: counts how many distinct regions touch the clue vertex. Values are 1 to 4; a value of 1 means all existing cells around the vertex belong to the same region. | Vertex Clue, Corner Clue, Grid Vertices, Region Count | Watchtower Vertex Value 1 To 4 | Boundary Vertex Region Count Constraint | Not Relevant | Partial | high |
@@ -52,8 +52,7 @@ Current status summary: 22 ready, 0 experimental, 0 blocked. 20 rules are implem
 
 ## Ready But Not Implemented
 
-- `bricky`: Global boundary-graph rule: forbids exactly four border segments meeting at a grid vertex, corresponding to four region corners meeting. It can include outer border, though outer border usually cannot reach degree 4.
-- `loopy`: Global boundary-graph rule: forbids exactly three border segments meeting at a grid vertex. It forbids T-junctions, cares about outer boundary, does not require loops, and allows degree 4 vertices when Bricky is not active.
+None. All known inventory rules are implemented.
 
 ## Rule Details
 
@@ -275,7 +274,7 @@ Current status summary: 22 ready, 0 experimental, 0 blocked. 20 rules are implem
 
 ### `bricky`
 
-- Implementation status: ready; implemented: No.
+- Implementation status: ready; implemented: Yes.
 - Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
 - Confirmed mechanics:
   - Global boundary-graph rule.
@@ -288,7 +287,7 @@ Current status summary: 22 ready, 0 experimental, 0 blocked. 20 rules are implem
 
 ### `loopy`
 
-- Implementation status: ready; implemented: No.
+- Implementation status: ready; implemented: Yes.
 - Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
 - Confirmed mechanics:
   - Global boundary-graph rule.
