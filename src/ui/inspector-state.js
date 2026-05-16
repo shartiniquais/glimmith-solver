@@ -10,6 +10,7 @@ export function selectedCellInspectorState(puzzle, selectedCell, candidateSummar
     active: Boolean(puzzle.active?.[selectedCell]),
     areaNumberClue: cellClues.find((clue) => clue.ruleId === "area_number") ?? null,
     polyominoClue: cellClues.find((clue) => clue.ruleId === "polyomino") ?? null,
+    otherCellClues: cellClues.filter((clue) => clue.ruleId === "palisade" || clue.ruleId === "compass"),
     candidateCount:
       candidateSummary && Number(candidateSummary.cell) === selectedCell && Number.isFinite(candidateSummary.count)
         ? candidateSummary.count

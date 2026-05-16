@@ -43,6 +43,8 @@
                 <button class="tool" data-tool="relation" type="button">Relation pair clue</button>
                 <button class="tool" data-tool="areaNumber" type="button">Area number clue</button>
                 <button class="tool" data-tool="polyomino" type="button">Polyomino clue</button>
+                <button class="tool" data-tool="palisade" type="button">Palisade clue</button>
+                <button class="tool" data-tool="compass" type="button">Compass clue</button>
                 <button class="tool" data-tool="eraseClue" type="button">Erase clue</button>
               </div>
             </div>
@@ -88,7 +90,23 @@
                   <option value="gt">First region &gt; second region</option>
                 </select>
               </label>
-              <p id="relationPickHint" class="hint">Choose Relation pair clue, then click two active cells in different regions.</p>
+              <p id="relationPickHint" class="hint">Choose Relation pair clue, then click two edge-adjacent active cells.</p>
+              <label class="stacked">Palisade pattern
+                <select id="palisadePatternInput">
+                  <option value="empty">Empty: 0 borders</option>
+                  <option value="one_sided">One sided: 1 border</option>
+                  <option value="corner">Corner: 2 adjacent borders</option>
+                  <option value="opposite">Opposite: 2 opposite borders</option>
+                  <option value="three_sided">Three sided: 3 borders</option>
+                  <option value="full">Full: 4 borders</option>
+                </select>
+              </label>
+              <div class="field-grid">
+                <label class="stacked">Compass N <input id="compassNInput" type="number" min="0" max="20" placeholder="Any" /></label>
+                <label class="stacked">Compass E <input id="compassEInput" type="number" min="0" max="20" placeholder="Any" /></label>
+                <label class="stacked">Compass S <input id="compassSInput" type="number" min="0" max="20" placeholder="Any" /></label>
+                <label class="stacked">Compass W <input id="compassWInput" type="number" min="0" max="20" placeholder="Any" /></label>
+              </div>
               <div class="mini-editor">
                 <div class="mini-editor-header">
                   <strong>Polyomino clue shape</strong>
@@ -225,6 +243,8 @@
               <dd>Places a fixed region-size clue on one cell.</dd>
               <dt>Polyomino clue</dt>
               <dd>Places a drawn shape clue on one cell.</dd>
+              <dt>Palisade / Compass clues</dt>
+              <dd>Place cell clues for side-border patterns or directional counts.</dd>
               <dt>Screenshot tracing</dt>
               <dd>Use an image as a manual tracing layer behind the grid.</dd>
             </dl>

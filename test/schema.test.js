@@ -152,7 +152,7 @@ test("validation reports unknown rules, ready-unimplemented rules, invalid clues
     },
     rules: {
       unknown_rule: {},
-      compass: {}
+      bricky: {}
     },
     shapeBank: {
       text: "TooBig: 0,0 1,0 2,0"
@@ -165,7 +165,7 @@ test("validation reports unknown rules, ready-unimplemented rules, invalid clues
   assert.match(result.errors.join("\n"), /Symbol cell 3 is not active/);
   assert.match(result.errors.join("\n"), /must reference orthogonally adjacent cells/);
   assert.match(result.errors.join("\n"), /Unknown rule id "unknown_rule"/);
-  assert.match(result.errors.join("\n"), /Rule "compass" is known and ready for implementation, but not implemented in the solver yet/);
+  assert.match(result.errors.join("\n"), /Rule "bricky" is known and ready for implementation, but not implemented in the solver yet/);
   assert.match(result.errors.join("\n"), /Relation clue "bad_relation".*outside the board/);
   assert.match(result.errors.join("\n"), /Shape Bank entry "TooBig" has more cells than the active board/);
 });
@@ -211,7 +211,28 @@ test("validation distinguishes unknown and ready-unimplemented rules", () => {
   });
   assert.equal(polyomino.ok, true);
 
-  for (const id of ["palisade", "bricky", "loopy", "compass", "watchtower"]) {
+  const palisade = validatePuzzle({
+    width: 1,
+    height: 1,
+    clues: [{ id: "full", type: "cell", ruleId: "palisade", location: { type: "cell", cell: 0 }, params: { pattern: "full" } }]
+  });
+  assert.equal(palisade.ok, true);
+
+  const compass = validatePuzzle({
+    width: 1,
+    height: 1,
+    clues: [{ id: "blank", type: "cell", ruleId: "compass", location: { type: "cell", cell: 0 }, params: {} }]
+  });
+  assert.equal(compass.ok, true);
+
+  const watchtower = validatePuzzle({
+    width: 1,
+    height: 1,
+    clues: [{ id: "one", type: "vertex", ruleId: "watchtower", location: { type: "vertex", x: 0, y: 0 }, value: 1 }]
+  });
+  assert.equal(watchtower.ok, true);
+
+  for (const id of ["bricky", "loopy"]) {
     const result = validatePuzzle({
       width: 1,
       height: 1,
@@ -226,9 +247,43 @@ test("validation distinguishes unknown and ready-unimplemented rules", () => {
 
 test("ready-unimplemented rules are rejected by the solver with a clear validation message", () => {
   const puzzle = createPuzzle(2, 2);
-  puzzle.rules.compass = {};
+  puzzle.rules.bricky = {};
 
   const result = solvePuzzle(puzzle);
   assert.equal(result.status, "no_solution");
-  assert.match(result.errors.join("\n"), /Rule "compass" is known and ready for implementation, but not implemented in the solver yet/);
+  assert.match(result.errors.join("\n"), /Rule "bricky" is known and ready for implementation, but not implemented in the solver yet/);
+});
+
+test("Palisade, Compass, and Watchtower validate rule-specific clue data", () => {
+  const palisade = validatePuzzle({
+    width: 1,
+    height: 1,
+    clues: [{ id: "bad_pattern", type: "cell", ruleId: "palisade", location: { type: "cell", cell: 0 }, params: { pattern: "diagonal" } }]
+  });
+  assert.equal(palisade.ok, false);
+  assert.match(palisade.errors.join("\n"), /requires a valid pattern/);
+
+  const compass = validatePuzzle({
+    width: 1,
+    height: 1,
+    clues: [{ id: "bad_north", type: "cell", ruleId: "compass", location: { type: "cell", cell: 0 }, params: { N: -1 } }]
+  });
+  assert.equal(compass.ok, false);
+  assert.match(compass.errors.join("\n"), /direction N requires a non-negative integer value/);
+
+  const watchtowerValue = validatePuzzle({
+    width: 1,
+    height: 1,
+    clues: [{ id: "five", type: "vertex", ruleId: "watchtower", location: { type: "vertex", x: 0, y: 0 }, value: 5 }]
+  });
+  assert.equal(watchtowerValue.ok, false);
+  assert.match(watchtowerValue.errors.join("\n"), /requires an integer value from 1 to 4/);
+
+  const watchtowerLocation = validatePuzzle({
+    width: 1,
+    height: 1,
+    clues: [{ id: "outside", type: "vertex", ruleId: "watchtower", location: { type: "vertex", x: 2, y: 0 }, value: 1 }]
+  });
+  assert.equal(watchtowerLocation.ok, false);
+  assert.match(watchtowerLocation.errors.join("\n"), /vertex is outside the board/);
 });

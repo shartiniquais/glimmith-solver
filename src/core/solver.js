@@ -61,6 +61,7 @@ export function solvePuzzle(rawPuzzle, options = {}) {
   const constraintModel = createConstraintModel();
   addRuleConstraints(constraintModel, context);
   const invalidPairs = constraintModel.invalidPairs;
+  const selectionValidators = constraintModel.selectionValidators ?? [];
   const solutions = [];
   let nodeCount = 0;
   let hitNodeLimit = false;
@@ -94,6 +95,7 @@ export function solvePuzzle(rawPuzzle, options = {}) {
     }
 
     if (coveredMask === fullMask) {
+      if (!selectionValidatorsPass(null, coveredMask)) return;
       solutions.push(makeSolution(puzzle, selected.map((id) => candidates[id])));
       return;
     }
@@ -102,8 +104,10 @@ export function solvePuzzle(rawPuzzle, options = {}) {
     if (!choice) return;
 
     for (const candidate of choice.options) {
+      const nextMask = coveredMask | candidate.mask;
+      if (!selectionValidatorsPass(candidate.id, nextMask)) continue;
       selected.push(candidate.id);
-      dfs(coveredMask | candidate.mask);
+      dfs(nextMask);
       selected.pop();
       if (solutions.length >= limit || hitNodeLimit) return;
     }
@@ -139,6 +143,17 @@ export function solvePuzzle(rawPuzzle, options = {}) {
       if (bad.has(selectedId)) return true;
     }
     return false;
+  }
+
+  function selectionValidatorsPass(candidateId, coveredMask) {
+    if (selectionValidators.length === 0) return true;
+    const selectedCandidates = selected.map((id) => candidates[id]);
+    if (candidateId !== null) selectedCandidates.push(candidates[candidateId]);
+    const state = {
+      complete: coveredMask === fullMask,
+      coveredMask
+    };
+    return selectionValidators.every((validator) => validator(selectedCandidates, state));
   }
 }
 

@@ -29,11 +29,11 @@ Legend:
 | non_boxy | ready | Yes | Yes | Yes | JSON-compatible toggle | Yes | Candidate filter forbidding filled rectangles, bars, and single cells. |
 | inequality | ready | Yes | Yes | Yes | Relation placement with direction selector | Yes | Strict two-region area inequality relation clue. |
 | solitude | ready | Yes | Yes | Yes | JSON-compatible toggle | Yes | Candidate filter requiring exactly one counted cell clue or eligible Rose symbol per region. |
-| palisade | ready | No | Registry validation only | No | Placeholder | No | Ready local border-pattern cell clue; not implemented yet. |
+| palisade | ready | Yes | Yes | Yes | Minimal placement tool | Yes | Local border-pattern cell clue; full means four border sides around the clue cell. |
 | bricky | ready | No | Registry validation only | No | Placeholder | No | Ready boundary-vertex degree-4 prohibition; not implemented yet. |
 | loopy | ready | No | Registry validation only | No | Placeholder | No | Ready boundary-vertex degree-3 prohibition; not implemented yet. |
-| compass | ready | No | Registry validation only | No | Placeholder | No | Ready N/E/S/W half-plane own-region count clue; not implemented yet. |
-| watchtower | ready | No | Registry validation only | No | Placeholder | No | Ready vertex/corner distinct-region count clue; not implemented yet. |
+| compass | ready | Yes | Yes | Yes | Minimal placement tool | Yes | N/E/S/W half-plane own-region count clue; blank Compass clues still count for Solitude. |
+| watchtower | ready | Yes | Yes | Yes | JSON-compatible toggle | Yes | Vertex/corner distinct-region count clue implemented through selection validation. |
 
 Fixture coverage lives under `test/fixtures/`. Each implemented rule has at least:
 
@@ -42,4 +42,4 @@ Fixture coverage lives under `test/fixtures/`. Each implemented rule has at leas
 - one invalid-input fixture,
 - one multi-solution fixture where the rule has a compact meaningful case.
 
-The fixture regression runner also checks JSON roundtrip behavior for valid fixtures and confirms every implemented registry rule has fixture coverage. Ready-but-not-implemented rules are intentionally excluded from implemented-rule fixture expectations until solver logic is added.
+The fixture regression runner also checks JSON roundtrip behavior for valid fixtures and confirms every implemented registry rule has fixture coverage. Bricky and Loopy remain ready-but-not-implemented and are intentionally excluded from implemented-rule fixture expectations until solver logic is added.

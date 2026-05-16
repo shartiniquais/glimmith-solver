@@ -16,11 +16,11 @@ export const RULE_HELP = Object.freeze({
   non_boxy: "Filled rectangles, bars, and single cells are forbidden.",
   inequality: "An edge-adjacent relation clue requiring adjacent region areas to satisfy a strict inequality.",
   solitude: "Every region must contain exactly one counted cell clue or symbol.",
-  palisade: "Ready cell clue: border pattern around the clue cell; solver support is not implemented yet.",
+  palisade: "A cell clue requiring a specific side-border pattern around the clue cell.",
   bricky: "Ready boundary rule: forbids degree-4 border vertices; solver support is not implemented yet.",
   loopy: "Ready boundary rule: forbids degree-3 border vertices; solver support is not implemented yet.",
-  compass: "Ready cell clue: counts own-region cells in N/E/S/W half-planes; solver support is not implemented yet.",
-  watchtower: "Ready vertex clue: counts distinct regions touching the clue vertex; solver support is not implemented yet."
+  compass: "A cell clue counting own-region cells in N/E/S/W half-planes.",
+  watchtower: "A vertex clue counting distinct selected regions touching that vertex."
 });
 
 export const IMPLEMENTED_RULE_VISUALS = Object.freeze({
@@ -40,7 +40,10 @@ export const IMPLEMENTED_RULE_VISUALS = Object.freeze({
   size_separation: { type: "paletteToggle", target: "rulePalette" },
   boxy: { type: "paletteToggle", target: "rulePalette" },
   non_boxy: { type: "paletteToggle", target: "rulePalette" },
-  inequality: { type: "placementTool", target: "relation" }
+  inequality: { type: "placementTool", target: "relation" },
+  palisade: { type: "placementTool", target: "palisade" },
+  compass: { type: "placementTool", target: "compass" },
+  watchtower: { type: "paletteToggle", target: "rulePalette" }
 });
 
 export const RULE_GROUPS = Object.freeze([

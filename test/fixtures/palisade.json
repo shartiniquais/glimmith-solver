@@ -1,0 +1,53 @@
+{
+  "fixtures": [
+    {
+      "name": "palisade-full-lonely-cell-unique",
+      "rulesCovered": ["palisade"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 1,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 1,
+        "height": 1,
+        "rules": { "area": 1 },
+        "clues": [
+          { "id": "full", "type": "cell", "ruleId": "palisade", "location": { "type": "cell", "cell": 0 }, "params": { "pattern": "full" } }
+        ]
+      }
+    },
+    {
+      "name": "palisade-full-rejects-joined-neighbor",
+      "rulesCovered": ["palisade"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 2,
+        "height": 1,
+        "rules": { "area": 2 },
+        "clues": [
+          { "id": "not_full", "type": "cell", "ruleId": "palisade", "location": { "type": "cell", "cell": 0 }, "params": { "pattern": "full" } }
+        ]
+      }
+    },
+    {
+      "name": "palisade-invalid-pattern",
+      "rulesCovered": ["palisade"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["requires a valid pattern"],
+      "puzzle": {
+        "width": 1,
+        "height": 1,
+        "rules": { "area": 1 },
+        "clues": [
+          { "id": "bad", "type": "cell", "ruleId": "palisade", "location": { "type": "cell", "cell": 0 }, "params": { "pattern": "diagonal" } }
+        ]
+      }
+    }
+  ]
+}

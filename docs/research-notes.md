@@ -35,9 +35,6 @@ Implemented now:
 - `area_number`
 - `polyomino`
 - `mingle_shape`
-
-Ready but not implemented:
-
 - `match`
 - `mismatch`
 - `range`
@@ -47,10 +44,13 @@ Ready but not implemented:
 - `non_boxy`
 - `inequality`
 - `palisade`
-- `bricky`
-- `loopy`
 - `compass`
 - `watchtower`
+
+Ready but not implemented:
+
+- `bricky`
+- `loopy`
 
 There are no blocked rules left in the current inventory. Ready-but-not-implemented rules should be treated as known rules and rejected with a clear "known and ready, but not implemented" message until solver work is added.
 
@@ -114,14 +114,14 @@ Implemented in the current candidate/constraint solver:
 - `difference`
 - `match`
 - `mismatch`
-
-Still deferred because they need border, vertex, or directional geometry beyond the current batch:
-
-- `compass`
 - `palisade`
+- `compass`
+- `watchtower`
+
+Still deferred because they need global boundary-degree geometry beyond the current batch:
+
 - `bricky`
 - `loopy`
-- `watchtower`
 
 Implementation model categories:
 
@@ -137,7 +137,7 @@ Straightforward candidate filters:
 - `boxy`
 - `non_boxy`
 - `compass`
-- `palisade`, where local border-pattern data is available
+- `palisade`
 
 Pairwise/global compatibility checks:
 
@@ -150,10 +150,12 @@ Pairwise/global compatibility checks:
 - `match`
 - `mismatch`
 
-Boundary graph constraints:
+Boundary or vertex selection constraints:
 
 - `bricky`
 - `loopy`
 - `watchtower`
+
+Watchtower is implemented as a selected-candidate validator rather than a candidate filter, because its count depends on how multiple selected regions meet at a vertex.
 
 Do not guess solver logic beyond these confirmed mechanics. Deferred rules should first receive validation/schema/UI support, then focused solver implementations with tests that prove each rule eliminates an otherwise valid solution.

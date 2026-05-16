@@ -74,6 +74,11 @@ const el = {
   differenceValueInput: document.getElementById("differenceValueInput"),
   inequalityDirectionInput: document.getElementById("inequalityDirectionInput"),
   relationPickHint: document.getElementById("relationPickHint"),
+  palisadePatternInput: document.getElementById("palisadePatternInput"),
+  compassNInput: document.getElementById("compassNInput"),
+  compassEInput: document.getElementById("compassEInput"),
+  compassSInput: document.getElementById("compassSInput"),
+  compassWInput: document.getElementById("compassWInput"),
   polyominoClueGrid: document.getElementById("polyominoClueGrid"),
   polyominoRotationsInput: document.getElementById("polyominoRotationsInput"),
   polyominoReflectionsInput: document.getElementById("polyominoReflectionsInput"),
@@ -214,6 +219,23 @@ function bindEvents() {
     if (target.dataset.inequalityDirection !== undefined) {
       const direction = target.value === "gt" ? "gt" : "lt";
       puzzle = updateClueById(clueId, (clue) => ({ ...clue, params: { ...(clue.params ?? {}), direction } }));
+      clearComputed();
+      render();
+    }
+    if (target.dataset.palisadePattern !== undefined) {
+      puzzle = updateClueById(clueId, (clue) => ({ ...clue, params: { ...(clue.params ?? {}), pattern: target.value } }));
+      clearComputed();
+      render();
+    }
+    if (target.dataset.compassDirection) {
+      const direction = target.dataset.compassDirection;
+      const value = target.value === "" ? undefined : Math.max(0, Number(target.value) || 0);
+      puzzle = updateClueById(clueId, (clue) => {
+        const params = { ...(clue.params ?? {}) };
+        if (value === undefined) delete params[direction];
+        else params[direction] = value;
+        return { ...clue, params };
+      });
       clearComputed();
       render();
     }
@@ -488,13 +510,31 @@ function handleCellClick(cell) {
     return;
   }
 
+  if (currentTool === "palisade") {
+    const pattern = el.palisadePatternInput.value;
+    puzzle = upsertCellClue("palisade", cell, { params: { pattern } });
+    clearComputed();
+    renderStatus(`Palisade ${pattern} clue placed on ${cellLabel(cell, puzzle.width)}.`, "good");
+    render();
+    return;
+  }
+
+  if (currentTool === "compass") {
+    const params = compassParamsFromForm();
+    puzzle = upsertCellClue("compass", cell, { params });
+    clearComputed();
+    renderStatus(`Compass clue placed on ${cellLabel(cell, puzzle.width)}.`, "good");
+    render();
+    return;
+  }
+
   if (currentTool === "relation") {
     handleRelationCellClick(cell);
     return;
   }
 
   if (currentTool === "eraseClue") {
-    const clue = (cellCluesByCell().get(cell) ?? []).find((item) => item.ruleId === "area_number" || item.ruleId === "polyomino");
+    const clue = (cellCluesByCell().get(cell) ?? []).find((item) => ["area_number", "polyomino", "palisade", "compass"].includes(item.ruleId));
     if (!clue) {
       renderStatus(`No removable clue on ${cellLabel(cell, puzzle.width)}.`, "warn");
       return;
@@ -620,6 +660,20 @@ function enableRule(id) {
     setCurrentTool("polyomino");
     return;
   }
+  if (id === "palisade") {
+    puzzle.rules.palisade = puzzle.rules.palisade ?? {};
+    setCurrentTool("palisade");
+    return;
+  }
+  if (id === "compass") {
+    puzzle.rules.compass = puzzle.rules.compass ?? {};
+    setCurrentTool("compass");
+    return;
+  }
+  if (id === "watchtower") {
+    puzzle.rules.watchtower = puzzle.rules.watchtower ?? {};
+    return;
+  }
   if (id === "gemini" || id === "delta" || id === "difference") {
     puzzle.rules[id] = puzzle.rules[id] ?? {};
     el.relationRuleInput.value = id;
@@ -740,6 +794,16 @@ function toolInfo(tool) {
       description: "Click an active cell to place the drawn polyomino clue.",
       params: `${polyominoDraftCells.size} drawn cells, rotations ${el.polyominoRotationsInput.checked ? "on" : "off"}, reflections ${el.polyominoReflectionsInput.checked ? "on" : "off"}.`
     },
+    palisade: {
+      name: "Palisade clue",
+      description: "Click an active cell to place a side-border pattern clue.",
+      params: `Pattern ${el.palisadePatternInput.value}. Click again with another pattern to replace it.`
+    },
+    compass: {
+      name: "Compass clue",
+      description: "Click an active cell to place directional own-region count restrictions.",
+      params: compassToolParameterText()
+    },
     eraseClue: {
       name: "Erase clue",
       description: "Click an Area Number, Polyomino, or relation clue to remove it.",
@@ -817,6 +881,15 @@ function ruleControlsHtml(id, active, disabled) {
   }
   if (id === "polyomino") {
     return `<div class="rule-controls"><button type="button" data-select-tool="polyomino" data-status="Polyomino placement tool selected.">Place polyomino clues</button></div>`;
+  }
+  if (id === "palisade") {
+    return `<div class="rule-controls"><button type="button" data-select-tool="palisade" data-status="Palisade placement tool selected.">Place Palisade clues</button></div>`;
+  }
+  if (id === "compass") {
+    return `<div class="rule-controls"><button type="button" data-select-tool="compass" data-status="Compass placement tool selected.">Place Compass clues</button></div>`;
+  }
+  if (id === "watchtower" && active) {
+    return `<div class="rule-controls"><p>Watchtower vertex clues are supported through JSON import/export.</p></div>`;
   }
   if (id === "gemini" || id === "delta" || id === "difference" || id === "inequality") {
     return `<div class="rule-controls"><button type="button" data-select-tool="relation" data-relation-rule="${id}" data-status="${escapeHtml(ruleLabel(id))} relation tool selected.">Place relation clue</button></div>`;
@@ -1004,6 +1077,10 @@ function cellInspectorHtml(state) {
       <h3>Polyomino</h3>
       ${poly}
     </section>
+    <section class="inspector-card">
+      <h3>Other cell clues</h3>
+      ${state.otherCellClues.length ? state.otherCellClues.map((clue) => cellClueInspectorHtml(clue, state.label)).join("") : `<p class="muted">No Palisade or Compass clue on this cell.</p>`}
+    </section>
   </div>`;
 }
 
@@ -1025,6 +1102,27 @@ function cellClueInspectorHtml(clue, label) {
       <p>${escapeHtml(label)} polyomino clue, ${cells.length} cell${cells.length === 1 ? "" : "s"}.</p>
       <label class="checkbox-row single"><input type="checkbox" ${checkedAttr(rotations)} data-clue-id="${escapeHtml(clue.id)}" data-poly-option="allowRotations" /> Allow rotations</label>
       <label class="checkbox-row single"><input type="checkbox" ${checkedAttr(reflections)} data-clue-id="${escapeHtml(clue.id)}" data-poly-option="allowReflections" /> Allow reflections</label>
+      <button type="button" data-delete-clue-id="${escapeHtml(clue.id)}">Remove clue</button>
+    </div>`;
+  }
+  if (clue.ruleId === "palisade") {
+    const pattern = clue.params?.pattern ?? "empty";
+    const options = ["empty", "one_sided", "corner", "opposite", "three_sided", "full"]
+      .map((value) => `<option value="${value}" ${value === pattern ? "selected" : ""}>${value}</option>`)
+      .join("");
+    return `<div class="inspector-stack">
+      <label class="stacked">Pattern
+        <select data-clue-id="${escapeHtml(clue.id)}" data-palisade-pattern>${options}</select>
+      </label>
+      <button type="button" data-delete-clue-id="${escapeHtml(clue.id)}">Remove clue</button>
+    </div>`;
+  }
+  if (clue.ruleId === "compass") {
+    const params = clue.params ?? {};
+    return `<div class="inspector-stack">
+      ${["N", "E", "S", "W"].map((direction) => `<label class="stacked">${direction}
+        <input type="number" min="0" max="20" value="${escapeHtml(params[direction] ?? "")}" data-clue-id="${escapeHtml(clue.id)}" data-compass-direction="${direction}" />
+      </label>`).join("")}
       <button type="button" data-delete-clue-id="${escapeHtml(clue.id)}">Remove clue</button>
     </div>`;
   }
@@ -1154,6 +1252,16 @@ function cellClueSvg(clues, rx, ry) {
   if (polyClue) {
     html += `<circle class="cell-clue-bg poly-clue-bg" data-clue-id="${escapeHtml(polyClue.id)}" data-cell="${polyClue.location.cell}" cx="${rx + CELL - 12}" cy="${ry + 12}" r="10"><title>Polyomino clue</title></circle>`;
     html += `<text class="cell-clue" data-clue-id="${escapeHtml(polyClue.id)}" data-cell="${polyClue.location.cell}" x="${rx + CELL - 12}" y="${ry + 12}">P</text>`;
+  }
+  const palisadeClue = clues.find((clue) => clue.ruleId === "palisade");
+  if (palisadeClue) {
+    html += `<circle class="cell-clue-bg" data-clue-id="${escapeHtml(palisadeClue.id)}" data-cell="${palisadeClue.location.cell}" cx="${rx + 12}" cy="${ry + CELL - 12}" r="10"><title>Palisade clue</title></circle>`;
+    html += `<text class="cell-clue" data-clue-id="${escapeHtml(palisadeClue.id)}" data-cell="${palisadeClue.location.cell}" x="${rx + 12}" y="${ry + CELL - 12}">S</text>`;
+  }
+  const compassClue = clues.find((clue) => clue.ruleId === "compass");
+  if (compassClue) {
+    html += `<circle class="cell-clue-bg" data-clue-id="${escapeHtml(compassClue.id)}" data-cell="${compassClue.location.cell}" cx="${rx + CELL - 12}" cy="${ry + CELL - 12}" r="10"><title>Compass clue</title></circle>`;
+    html += `<text class="cell-clue" data-clue-id="${escapeHtml(compassClue.id)}" data-cell="${compassClue.location.cell}" x="${rx + CELL - 12}" y="${ry + CELL - 12}">C</text>`;
   }
   return html;
 }
@@ -1299,6 +1407,26 @@ function toggleDraftCell(targetSet, key) {
 function shapeCellsFromDraft(targetSet) {
   const cells = [...targetSet].map((key) => key.split(",").map(Number));
   return cells.length ? normalizeShape(cells) : [];
+}
+
+function compassParamsFromForm() {
+  const params = {};
+  for (const [direction, input] of [
+    ["N", el.compassNInput],
+    ["E", el.compassEInput],
+    ["S", el.compassSInput],
+    ["W", el.compassWInput]
+  ]) {
+    if (input.value === "") continue;
+    params[direction] = Math.max(0, Number(input.value) || 0);
+  }
+  return params;
+}
+
+function compassToolParameterText() {
+  const params = compassParamsFromForm();
+  const labels = Object.entries(params).map(([direction, value]) => `${direction} ${value}`);
+  return labels.length ? labels.join(", ") : "No directional restrictions; still counts as a cell clue.";
 }
 
 function shapeBankLineCount() {

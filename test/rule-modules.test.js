@@ -1,14 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { cellsAroundVertex, distinctRegionsTouchingVertex, palisadePatternFromSides } from "../src/core/boundary.js";
 import { createConstraintModel } from "../src/core/constraints.js";
 import { canonicalShapeKey, maskFromIndexes } from "../src/core/geometry.js";
 import { normalizePuzzle } from "../src/core/puzzle.js";
 import { areaNumberRule } from "../src/core/rules/area-number.js";
 import { boxyRule, nonBoxyRule } from "../src/core/rules/area-shape-filters.js";
+import { compassCounts, compassRule } from "../src/core/rules/compass.js";
 import { inequalityRule } from "../src/core/rules/inequality.js";
 import { mingleShapeRule } from "../src/core/rules/mingle-shape.js";
 import { deltaRule, differenceRule, geminiRule } from "../src/core/rules/relations.js";
 import { matchRule, mismatchRule } from "../src/core/rules/shape-global.js";
+import { candidatePalisadePattern, palisadeRule } from "../src/core/rules/palisade.js";
 import { polyominoRule } from "../src/core/rules/polyomino.js";
 import { precisionRule } from "../src/core/rules/precision.js";
 import { rangeRule } from "../src/core/rules/range.js";
@@ -17,6 +20,7 @@ import { roseWindowRule } from "../src/core/rules/rose-window.js";
 import { shapeBankRule } from "../src/core/rules/shape-bank.js";
 import { sizeSeparationRule } from "../src/core/rules/size-separation.js";
 import { solitudeRule } from "../src/core/rules/solitude.js";
+import { watchtowerRule } from "../src/core/rules/watchtower.js";
 
 test("Precision rule filters by candidate area", () => {
   const context = createRuleContext(normalizePuzzle({ width: 2, height: 2, rules: { area: 2 } }));
@@ -215,6 +219,94 @@ test("Inequality validates directions and rejects incompatible area pairs", () =
     })
   );
   assert.match(inequalityRule.validatePuzzle(invalid).join("\n"), /requires params.direction "lt" or "gt"/);
+});
+
+test("Palisade recognizes local border pattern classes", () => {
+  const puzzle = normalizePuzzle({ width: 3, height: 3, rules: { palisade: {} } });
+
+  assert.equal(candidatePalisadePattern(candidate([0, 1, 2, 3, 4, 5, 6, 7, 8], 3), puzzle, 4), "empty");
+  assert.equal(candidatePalisadePattern(candidate([4], 3), puzzle, 4), "full");
+  assert.equal(candidatePalisadePattern(candidate([4, 5, 7, 8], 3), puzzle, 4), "corner");
+  assert.equal(candidatePalisadePattern(candidate([1, 4, 7], 3), puzzle, 4), "opposite");
+  assert.equal(palisadePatternFromSides(new Set(["N"])), "one_sided");
+  assert.equal(palisadePatternFromSides(new Set(["N", "E", "S"])), "three_sided");
+});
+
+test("Palisade filters candidate regions containing the clue cell", () => {
+  const puzzle = normalizePuzzle({
+    width: 3,
+    height: 3,
+    rules: { palisade: {} },
+    clues: [
+      { id: "corner", type: "cell", ruleId: "palisade", location: { type: "cell", cell: 4 }, params: { pattern: "corner" } }
+    ]
+  });
+  const context = createRuleContext(puzzle);
+
+  assert.equal(palisadeRule.candidateFilter(candidate([4, 5, 7, 8], 3), context), true);
+  assert.equal(palisadeRule.candidateFilter(candidate([1, 4, 7], 3), context), false);
+  assert.equal(palisadeRule.candidateFilter(candidate([0, 1], 3), context), true);
+});
+
+test("Compass counts own-region cells in directional half-planes", () => {
+  const puzzle = normalizePuzzle({ width: 3, height: 3, rules: { compass: {} } });
+  const counts = compassCounts(candidate([4, 2, 5, 8], 3), puzzle, 4);
+
+  assert.deepEqual(counts, { N: 1, E: 3, S: 1, W: 0 });
+});
+
+test("Compass filters supplied directions and ignores missing directions", () => {
+  const puzzle = normalizePuzzle({
+    width: 3,
+    height: 3,
+    rules: { compass: {} },
+    clues: [
+      { id: "east_three", type: "cell", ruleId: "compass", location: { type: "cell", cell: 4 }, params: { E: 3 } }
+    ]
+  });
+  const context = createRuleContext(puzzle);
+
+  assert.equal(compassRule.candidateFilter(candidate([4, 2, 5, 8], 3), context), true);
+  assert.equal(compassRule.candidateFilter(candidate([4, 1, 7], 3), context), false);
+});
+
+test("Watchtower counts distinct selected regions touching a vertex", () => {
+  const puzzle = normalizePuzzle({ width: 2, height: 2, rules: { watchtower: {} } });
+  const vertex = { x: 1, y: 1 };
+
+  assert.deepEqual(cellsAroundVertex(puzzle, vertex), [0, 1, 2, 3]);
+  assert.equal(distinctRegionsTouchingVertex([candidate([0, 1, 2, 3], 2)], puzzle, vertex), 1);
+  assert.equal(distinctRegionsTouchingVertex([candidate([0, 1], 2), candidate([2, 3], 2)], puzzle, vertex), 2);
+  assert.equal(
+    distinctRegionsTouchingVertex([candidate([0], 2), candidate([1], 2), candidate([2], 2), candidate([3], 2)], puzzle, vertex),
+    4
+  );
+});
+
+test("Watchtower adds a selected-candidate validator for exact vertex counts", () => {
+  const candidates = [
+    { ...candidate([0], 2), id: 0 },
+    { ...candidate([1], 2), id: 1 },
+    { ...candidate([2], 2), id: 2 },
+    { ...candidate([3], 2), id: 3 }
+  ];
+  const puzzle = normalizePuzzle({
+    width: 2,
+    height: 2,
+    rules: { watchtower: {} },
+    clues: [{ id: "four", type: "vertex", ruleId: "watchtower", location: { type: "vertex", x: 1, y: 1 }, value: 4 }]
+  });
+  const context = createRuleContext(puzzle, { candidates });
+  const model = createConstraintModel();
+
+  watchtowerRule.addConstraints(model, context);
+
+  assert.equal(model.selectionValidators.length, 1);
+  assert.equal(model.selectionValidators[0](candidates.slice(0, 3), { complete: false }), true);
+  assert.equal(model.selectionValidators[0](candidates, { complete: true }), true);
+
+  const oneRegion = [{ ...candidate([0, 1, 2, 3], 2), id: 4 }];
+  assert.equal(model.selectionValidators[0](oneRegion, { complete: true }), false);
 });
 
 test("Mingle Shape rejects orthogonally adjacent same-shape candidate pairs", () => {

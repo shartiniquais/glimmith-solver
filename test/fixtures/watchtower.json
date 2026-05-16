@@ -1,0 +1,53 @@
+{
+  "fixtures": [
+    {
+      "name": "watchtower-one-region-unique",
+      "rulesCovered": ["watchtower"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 1,
+      "expectedForcedSteps": ["forced_region"],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "rules": { "area": 4 },
+        "clues": [
+          { "id": "one", "type": "vertex", "ruleId": "watchtower", "location": { "type": "vertex", "x": 1, "y": 1 }, "value": 1 }
+        ]
+      }
+    },
+    {
+      "name": "watchtower-wrong-count-impossible",
+      "rulesCovered": ["watchtower"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "rules": { "area": 4 },
+        "clues": [
+          { "id": "two", "type": "vertex", "ruleId": "watchtower", "location": { "type": "vertex", "x": 1, "y": 1 }, "value": 2 }
+        ]
+      }
+    },
+    {
+      "name": "watchtower-invalid-value",
+      "rulesCovered": ["watchtower"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["requires an integer value from 1 to 4"],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "rules": { "area": 4 },
+        "clues": [
+          { "id": "five", "type": "vertex", "ruleId": "watchtower", "location": { "type": "vertex", "x": 1, "y": 1 }, "value": 5 }
+        ]
+      }
+    }
+  ]
+}

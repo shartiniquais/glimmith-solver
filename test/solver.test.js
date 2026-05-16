@@ -388,6 +388,84 @@ test("Inequality edge-location clues compare adjacent region areas", () => {
   assert.deepEqual(result.solutions[0].regions.map((region) => region.cells), [[0], [1, 2]]);
 });
 
+test("Palisade cell clues filter local side-border patterns", () => {
+  const puzzle = createPuzzle(1, 1);
+  puzzle.rules.area = 1;
+  puzzle.clues = [
+    { id: "lonely", type: "cell", ruleId: "palisade", location: { type: "cell", cell: 0 }, params: { pattern: "full" } }
+  ];
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "unique_solution");
+  assert.deepEqual(result.solutions[0].regions.map((region) => region.cells), [[0]]);
+
+  const impossible = createPuzzle(2, 1);
+  impossible.rules.area = 2;
+  impossible.clues = [
+    { id: "not_lonely", type: "cell", ruleId: "palisade", location: { type: "cell", cell: 0 }, params: { pattern: "full" } }
+  ];
+  const rejected = solvePuzzle(impossible, { limit: 2 });
+  assert.equal(rejected.status, "no_solution");
+});
+
+test("Compass cell clues filter directional own-region counts", () => {
+  const puzzle = createPuzzle(3, 1);
+  puzzle.rules.area = 3;
+  puzzle.clues = [
+    { id: "east_two", type: "cell", ruleId: "compass", location: { type: "cell", cell: 0 }, params: { E: 2 } }
+  ];
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "unique_solution");
+  assert.deepEqual(result.solutions[0].regions.map((region) => region.cells), [[0, 1, 2]]);
+
+  puzzle.clues[0].params.E = 1;
+  const rejected = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(rejected.status, "no_solution");
+});
+
+test("Watchtower vertex clues count distinct touching regions", () => {
+  const oneRegion = createPuzzle(2, 2);
+  oneRegion.rules.area = 4;
+  oneRegion.clues = [
+    { id: "one", type: "vertex", ruleId: "watchtower", location: { type: "vertex", x: 1, y: 1 }, value: 1 }
+  ];
+  const oneResult = solvePuzzle(oneRegion, { limit: 2 });
+  assert.equal(oneResult.status, "unique_solution");
+  assert.equal(oneResult.solutions[0].regions.length, 1);
+
+  oneRegion.clues[0].value = 2;
+  const wrongCount = solvePuzzle(oneRegion, { limit: 2 });
+  assert.equal(wrongCount.status, "no_solution");
+
+  const fourRegions = createPuzzle(2, 2);
+  fourRegions.rules.area = 1;
+  fourRegions.clues = [
+    { id: "four", type: "vertex", ruleId: "watchtower", location: { type: "vertex", x: 1, y: 1 }, value: 4 }
+  ];
+  const fourResult = solvePuzzle(fourRegions, { limit: 2 });
+  assert.equal(fourResult.status, "unique_solution");
+  assert.equal(fourResult.solutions[0].regions.length, 4);
+});
+
+test("Solitude counts Palisade and Compass cell clues", () => {
+  const puzzle = createPuzzle(2, 1);
+  puzzle.rules.area = 1;
+  puzzle.rules.solitude = {};
+  puzzle.clues = [
+    { id: "palisade", type: "cell", ruleId: "palisade", location: { type: "cell", cell: 0 }, params: { pattern: "full" } },
+    { id: "compass", type: "cell", ruleId: "compass", location: { type: "cell", cell: 1 }, params: {} }
+  ];
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "unique_solution");
+  assert.equal(result.solutions[0].regions.length, 2);
+
+  puzzle.clues.pop();
+  const rejected = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(rejected.status, "no_solution");
+});
+
 function mirroredMinglePuzzle(mingleConfig) {
   const puzzle = mirroredShapePuzzle();
   puzzle.rules.mingle_shape = mingleConfig;

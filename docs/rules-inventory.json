@@ -486,7 +486,7 @@
         "full: exactly 4 border sides, a lonely cell.",
         "This is a local candidate/border-pattern rule."
       ],
-      "implemented": false,
+      "implemented": true,
       "confirmation": {
         "basis": "user_confirmed_in_game_observation",
         "date": "2026-05-16",
@@ -1087,7 +1087,7 @@
         "A 2 means exactly two distinct regions touch that vertex, etc.",
         "User provided tutorial screenshot: \"Counts how many regions are touching the clue.\""
       ],
-      "implemented": false,
+      "implemented": true,
       "confirmation": {
         "basis": "user_confirmed_in_game_observation",
         "date": "2026-05-16",
@@ -1152,7 +1152,7 @@
         "Missing directions mean no restriction.",
         "A fully blank Compass means no directional restriction, but still counts as a clue/symbol for Solitude."
       ],
-      "implemented": false,
+      "implemented": true,
       "confirmation": {
         "basis": "user_confirmed_in_game_observation",
         "date": "2026-05-16",

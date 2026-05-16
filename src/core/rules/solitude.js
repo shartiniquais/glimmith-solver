@@ -1,7 +1,7 @@
 import { hasBit } from "../geometry.js";
 import { clueCell } from "./clue-helpers.js";
 
-const COUNTED_CELL_CLUE_RULES = new Set(["area_number", "polyomino"]);
+const COUNTED_CELL_CLUE_RULES = new Set(["area_number", "polyomino", "palisade", "compass"]);
 
 export const solitudeRule = {
   id: "solitude",

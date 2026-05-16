@@ -23,6 +23,9 @@ The solver now has registered, data-driven implementations for:
 - `boxy`: candidate filter for regions that exactly fill their bounding rectangle.
 - `non_boxy`: candidate filter rejecting filled rectangles, bars, and single cells.
 - `inequality`: strict area inequality relation clue between two referenced regions.
+- `palisade`: cell clue requiring a local side-border pattern around the clue cell.
+- `compass`: cell clue counting own-region cells in N/E/S/W half-planes.
+- `watchtower`: vertex clue counting distinct selected regions touching a grid vertex.
 
 `area_number`, `polyomino`, and `range` can also act as candidate sources when there is no Precision area and no Shape Bank:
 
@@ -64,8 +67,45 @@ Polyomino clue:
 
 Gemini, Delta, Difference, and Inequality use generic relation clues with `regionRefs` internally. Their confirmed game-facing semantics are edge-adjacent, so validation requires the referenced cells or edge-location cells to share an orthogonal edge.
 
+Palisade clue:
+
+```js
+{
+  id: "palisade_0",
+  type: "cell",
+  ruleId: "palisade",
+  location: { type: "cell", cell: 0 },
+  params: { pattern: "full" }
+}
+```
+
+Compass clue:
+
+```js
+{
+  id: "compass_0",
+  type: "cell",
+  ruleId: "compass",
+  location: { type: "cell", cell: 0 },
+  params: { N: 1, E: 2 }
+}
+```
+
+Watchtower clue:
+
+```js
+{
+  id: "watchtower_1_1",
+  type: "vertex",
+  ruleId: "watchtower",
+  location: { type: "vertex", x: 1, y: 1 },
+  value: 3
+}
+```
+
 ## Remaining Limitations
 
 - Area Number candidate sourcing is conservative: without Precision or Shape Bank, it generates candidates for clue areas. Puzzles with unclued regions of other sizes will need another candidate source.
 - Polyomino candidate sourcing uses clue shapes as reusable placement sources. If later evidence shows consumable or grouped shape behavior, that should be added explicitly.
-- Palisade, Bricky, Loopy, Compass, and Watchtower remain validation-only and are rejected by the solver with a known-ready/not-implemented message until their solver modules are added.
+- Bricky and Loopy remain validation-only and are rejected by the solver with a known-ready/not-implemented message until their boundary-graph modules are added.
+- Solitude currently counts Palisade and Compass as cell clues. Watchtower is a vertex clue and does not count for Solitude in the current implementation.

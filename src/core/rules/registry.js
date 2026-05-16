@@ -1,8 +1,10 @@
 import { areaNumberRule } from "./area-number.js";
 import { boxyRule, nonBoxyRule } from "./area-shape-filters.js";
+import { compassRule } from "./compass.js";
 import { inequalityRule } from "./inequality.js";
 import { deltaRule, differenceRule, geminiRule } from "./relations.js";
 import { mingleShapeRule } from "./mingle-shape.js";
+import { palisadeRule } from "./palisade.js";
 import { matchRule, mismatchRule } from "./shape-global.js";
 import { polyominoRule } from "./polyomino.js";
 import { precisionRule } from "./precision.js";
@@ -11,6 +13,7 @@ import { roseWindowRule } from "./rose-window.js";
 import { shapeBankRule } from "./shape-bank.js";
 import { sizeSeparationRule } from "./size-separation.js";
 import { solitudeRule } from "./solitude.js";
+import { watchtowerRule } from "./watchtower.js";
 
 export const LEGACY_RULE_KEYS = new Set([
   "area",
@@ -23,11 +26,8 @@ export const LEGACY_RULE_KEYS = new Set([
 ]);
 
 const readyUnimplementedRules = [
-  ["palisade", "Palisade"],
   ["bricky", "Bricky"],
-  ["loopy", "Loopy"],
-  ["compass", "Compass"],
-  ["watchtower", "Watchtower"]
+  ["loopy", "Loopy"]
 ];
 
 export const RULE_REGISTRY = Object.freeze({
@@ -48,6 +48,9 @@ export const RULE_REGISTRY = Object.freeze({
   boxy: boxyRule,
   non_boxy: nonBoxyRule,
   inequality: inequalityRule,
+  palisade: palisadeRule,
+  compass: compassRule,
+  watchtower: watchtowerRule,
   ...Object.fromEntries(readyUnimplementedRules.map(([id, label]) => [id, unimplementedRule(id, label, "ready")]))
 });
 

@@ -83,6 +83,21 @@ export const RULE_EXPLANATION_SNIPPETS = Object.freeze({
     pairIncompatible: "Inequality requires the referenced region areas to satisfy the strict direction.",
     clueSatisfied: "The referenced region areas satisfy the strict inequality.",
     clueUnsatisfied: "The referenced region areas do not satisfy the strict inequality."
+  },
+  palisade: {
+    candidateViolation: "The candidate border pattern around the Palisade clue cell does not match the clue.",
+    clueSatisfied: "The clue cell has the required side-border pattern.",
+    clueUnsatisfied: "The clue cell does not have the required side-border pattern."
+  },
+  compass: {
+    candidateViolation: "The candidate does not match the Compass directional counts.",
+    clueSatisfied: "The clue's region has the required directional counts.",
+    clueUnsatisfied: "The clue's region does not have the required directional counts."
+  },
+  watchtower: {
+    pairIncompatible: "Watchtower requires the selected regions touching a vertex to match the clue count.",
+    clueSatisfied: "The vertex touches the required number of distinct regions.",
+    clueUnsatisfied: "The vertex touches the wrong number of distinct regions."
   }
 });
 

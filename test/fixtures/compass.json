@@ -1,0 +1,53 @@
+{
+  "fixtures": [
+    {
+      "name": "compass-east-count-unique",
+      "rulesCovered": ["compass"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 1,
+      "expectedForcedSteps": ["forced_region"],
+      "puzzle": {
+        "width": 3,
+        "height": 1,
+        "rules": { "area": 3 },
+        "clues": [
+          { "id": "east_two", "type": "cell", "ruleId": "compass", "location": { "type": "cell", "cell": 0 }, "params": { "E": 2 } }
+        ]
+      }
+    },
+    {
+      "name": "compass-east-count-impossible",
+      "rulesCovered": ["compass"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 3,
+        "height": 1,
+        "rules": { "area": 3 },
+        "clues": [
+          { "id": "east_one", "type": "cell", "ruleId": "compass", "location": { "type": "cell", "cell": 0 }, "params": { "E": 1 } }
+        ]
+      }
+    },
+    {
+      "name": "compass-invalid-negative-direction",
+      "rulesCovered": ["compass"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["direction N requires a non-negative integer value"],
+      "puzzle": {
+        "width": 1,
+        "height": 1,
+        "rules": { "area": 1 },
+        "clues": [
+          { "id": "bad_north", "type": "cell", "ruleId": "compass", "location": { "type": "cell", "cell": 0 }, "params": { "N": -1 } }
+        ]
+      }
+    }
+  ]
+}

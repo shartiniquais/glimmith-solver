@@ -75,3 +75,13 @@ test("relation tool UI describes edge-adjacent placement", () => {
   assert.match(appSource, /edge-adjacent/);
   assert.match(appSource, /orthogonally adjacent/);
 });
+
+test("Palisade and Compass placement controls are present", () => {
+  assert.match(indexHtml, /data-tool="palisade"/);
+  assert.match(indexHtml, /id="palisadePatternInput"/);
+  assert.match(indexHtml, /data-tool="compass"/);
+  assert.match(indexHtml, /id="compassNInput"/);
+  assert.match(indexHtml, /id="compassEInput"/);
+  assert.match(indexHtml, /id="compassSInput"/);
+  assert.match(indexHtml, /id="compassWInput"/);
+});

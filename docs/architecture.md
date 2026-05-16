@@ -83,6 +83,9 @@ Currently implemented rule modules:
 - `boxy`: candidate filter requiring each region to fill its bounding rectangle.
 - `non_boxy`: candidate filter rejecting filled rectangles, bars, and single-cell regions.
 - `inequality`: two-region strict area inequality relation constraint.
+- `palisade`: cell clue requiring a specific side-border pattern around the clue cell.
+- `compass`: cell clue counting own-region cells in N/E/S/W half-planes.
+- `watchtower`: vertex clue counting distinct selected regions touching a grid vertex.
 
 Manual `cut`/`join` edge constraints are handled by `edgeConstraintsRule`. They are editor givens, not Glimmith rule cards.
 
@@ -104,6 +107,9 @@ Manual `cut`/`join` edge constraints are handled by `edgeConstraintsRule`. They 
 9. Extract solutions using the configured shape-comparison equivalence.
 
 Candidate generation lives in `src/core/candidates.js`. Pairwise/global incompatibility storage lives in `src/core/constraints.js`.
+Rules that cannot be expressed as pairwise incompatibilities can add selection validators through the same constraint model. The solver calls those validators during exact-cover search and at completion. Watchtower uses this hook to count distinct selected regions touching a vertex.
+
+Local side and vertex geometry helpers live in `src/core/boundary.js`.
 
 `buildCandidateGenerationPlan(puzzle, context)` is the candidate-source extension point. Today it chooses reusable Shape Bank placements, fixed-area Precision regions, Polyomino clue shapes, Area Number clue areas, or Range area bounds. Future rules should extend that source plan or add local candidate filters there, without adding rule-specific logic to the exact-cover search.
 
@@ -119,7 +125,7 @@ Candidate generation lives in `src/core/candidates.js`. Pairwise/global incompat
 - impossible legacy or v2 board masks,
 - ready-but-not-implemented rule IDs.
 
-Ready-but-not-implemented rules from the inventory, such as Palisade, Bricky, Loopy, Compass, and Watchtower, should not affect solving until their modules are implemented. If they appear in puzzle data, solving returns `no_solution` with a known-ready/not-implemented message. UI placeholders are acceptable only if they do not imply solver support.
+Ready-but-not-implemented rules from the inventory, currently Bricky and Loopy, should not affect solving until their modules are implemented. If they appear in puzzle data, solving returns `no_solution` with a known-ready/not-implemented message. UI placeholders are acceptable only if they do not imply solver support.
 
 ## Adding A Rule
 
