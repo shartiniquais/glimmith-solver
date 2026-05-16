@@ -1,4 +1,4 @@
-import { activeAdjacencyEdges, cellLabel, edgeKey, idx, parseEdgeKey, xy } from "../core/geometry.js";
+import { activeAdjacencyEdges, cellLabel, edgeKey, idx, normalizeShape, parseEdgeKey, xy } from "../core/geometry.js";
 import {
   createPuzzle,
   cycleCellSymbol,
@@ -12,27 +12,87 @@ import {
 import { solvePuzzle } from "../core/solver.js";
 import { findNextLogicalStep, summarizeSolution } from "../core/explain.js";
 import { validatePuzzle } from "../core/validation.js";
+import { RULE_REGISTRY } from "../core/rules/registry.js";
 
 const CELL = 46;
 const SVG_PAD = 10;
+const MINI_GRID_SIZE = 5;
+const DEFAULT_BANK_SHAPE = "O4: 0,0 1,0 0,1 1,1";
+
+const RULE_HELP = {
+  precision: "Every region must have exactly this many cells.",
+  shape_bank: "Every region must match one of the allowed drawn shapes.",
+  rose_window: "Every region must contain the required symbol counts.",
+  gemini: "A relation clue requiring two referenced regions to have the same shape.",
+  delta: "A relation clue requiring two referenced regions to have different shapes.",
+  difference: "A relation clue requiring two referenced regions to differ by a fixed area.",
+  area_number: "A cell clue forcing its region to have the shown area.",
+  polyomino: "A cell clue forcing its region to match a drawn polyomino.",
+  mingle_shape: "Adjacent selected regions cannot have the same shape.",
+  match: "Experimental rule with unresolved edge cases.",
+  mismatch: "Experimental rule with unresolved edge cases.",
+  range: "Experimental rule with unresolved edge cases.",
+  size_separation: "Experimental rule with unresolved edge cases.",
+  boxy: "Experimental rule with unresolved edge cases.",
+  non_boxy: "Experimental rule with unresolved edge cases.",
+  inequality: "Experimental relation rule with unresolved edge cases.",
+  solitude: "Experimental rule with unresolved edge cases.",
+  palisade: "Blocked until exact semantics are verified.",
+  bricky: "Blocked until exact semantics are verified.",
+  loopy: "Blocked until exact semantics are verified.",
+  compass: "Blocked until exact semantics are verified.",
+  watchtower: "Blocked until exact semantics are verified."
+};
 
 let puzzle = createPuzzle(6, 6);
 let currentTool = "cell";
 let currentSolution = null;
 let lastStep = null;
+let relationFirstCell = null;
+let shapeDraftCells = new Set(["0,0", "1,0", "0,1", "1,1"]);
+let polyominoDraftCells = new Set(["0,0", "1,0", "0,1"]);
+let traceImage = {
+  href: "",
+  opacity: 0.35,
+  x: 0,
+  y: 0,
+  scale: 1,
+  rotation: 0
+};
 
 const el = {
   boardSvg: document.getElementById("boardSvg"),
   widthInput: document.getElementById("widthInput"),
   heightInput: document.getElementById("heightInput"),
   resizeButton: document.getElementById("resizeButton"),
+  rulePalette: document.getElementById("rulePalette"),
   areaInput: document.getElementById("areaInput"),
   roseInput: document.getElementById("roseInput"),
   rotationsInput: document.getElementById("rotationsInput"),
   reflectionsInput: document.getElementById("reflectionsInput"),
+  shapeEquivRotationsInput: document.getElementById("shapeEquivRotationsInput"),
   shapeEquivReflectionsInput: document.getElementById("shapeEquivReflectionsInput"),
+  areaClueValueInput: document.getElementById("areaClueValueInput"),
+  relationRuleInput: document.getElementById("relationRuleInput"),
+  differenceValueInput: document.getElementById("differenceValueInput"),
+  relationPickHint: document.getElementById("relationPickHint"),
+  polyominoClueGrid: document.getElementById("polyominoClueGrid"),
+  polyominoRotationsInput: document.getElementById("polyominoRotationsInput"),
+  polyominoReflectionsInput: document.getElementById("polyominoReflectionsInput"),
+  clearPolyominoButton: document.getElementById("clearPolyominoButton"),
   shapeBankInput: document.getElementById("shapeBankInput"),
+  shapeNameInput: document.getElementById("shapeNameInput"),
+  shapeMiniGrid: document.getElementById("shapeMiniGrid"),
+  addShapeButton: document.getElementById("addShapeButton"),
+  clearShapeDraftButton: document.getElementById("clearShapeDraftButton"),
   tetrominoButton: document.getElementById("tetrominoButton"),
+  screenshotInput: document.getElementById("screenshotInput"),
+  screenshotOpacityInput: document.getElementById("screenshotOpacityInput"),
+  screenshotXInput: document.getElementById("screenshotXInput"),
+  screenshotYInput: document.getElementById("screenshotYInput"),
+  screenshotScaleInput: document.getElementById("screenshotScaleInput"),
+  screenshotRotationInput: document.getElementById("screenshotRotationInput"),
+  clearScreenshotButton: document.getElementById("clearScreenshotButton"),
   maxNodesInput: document.getElementById("maxNodesInput"),
   solveButton: document.getElementById("solveButton"),
   nextStepButton: document.getElementById("nextStepButton"),
@@ -41,6 +101,7 @@ const el = {
   exportJsonButton: document.getElementById("exportJsonButton"),
   importJsonButton: document.getElementById("importJsonButton"),
   jsonBox: document.getElementById("jsonBox"),
+  validationBox: document.getElementById("validationBox"),
   statusBox: document.getElementById("statusBox"),
   solutionText: document.getElementById("solutionText")
 };
@@ -51,10 +112,7 @@ render();
 
 function bindEvents() {
   document.querySelectorAll(".tool").forEach((button) => {
-    button.addEventListener("click", () => {
-      currentTool = button.dataset.tool;
-      document.querySelectorAll(".tool").forEach((item) => item.classList.toggle("active", item === button));
-    });
+    button.addEventListener("click", () => setCurrentTool(button.dataset.tool));
   });
 
   el.resizeButton.addEventListener("click", () => {
@@ -66,12 +124,96 @@ function bindEvents() {
     render();
   });
 
+  el.rulePalette.addEventListener("change", (event) => {
+    const toggle = event.target.closest("[data-rule-toggle]");
+    if (toggle) {
+      setRuleEnabled(toggle.dataset.ruleToggle, toggle.checked);
+      return;
+    }
+    const mingleOption = event.target.closest("[data-mingle-option]");
+    if (mingleOption) updateMingleOption(mingleOption.dataset.mingleOption, mingleOption.checked);
+  });
+
+  el.rulePalette.addEventListener("click", (event) => {
+    const toolButton = event.target.closest("[data-select-tool]");
+    if (!toolButton) return;
+    if (toolButton.dataset.relationRule) el.relationRuleInput.value = toolButton.dataset.relationRule;
+    setCurrentTool(toolButton.dataset.selectTool);
+    renderStatus(toolButton.dataset.status ?? "Tool selected.", "");
+  });
+
   el.areaInput.addEventListener("change", updateRulesFromForm);
   el.roseInput.addEventListener("input", updateRulesFromForm);
   el.rotationsInput.addEventListener("change", updateRulesFromForm);
   el.reflectionsInput.addEventListener("change", updateRulesFromForm);
+  el.shapeEquivRotationsInput.addEventListener("change", updateRulesFromForm);
   el.shapeEquivReflectionsInput.addEventListener("change", updateRulesFromForm);
   el.shapeBankInput.addEventListener("input", updateRulesFromForm);
+
+  el.relationRuleInput.addEventListener("change", () => {
+    relationFirstCell = null;
+    updateRelationHint();
+    render();
+  });
+
+  el.polyominoClueGrid.addEventListener("click", (event) => {
+    toggleDraftCell(polyominoDraftCells, event.target.dataset.miniCell);
+    renderPolyominoGrid();
+  });
+  el.shapeMiniGrid.addEventListener("click", (event) => {
+    toggleDraftCell(shapeDraftCells, event.target.dataset.miniCell);
+    renderShapeMiniGrid();
+  });
+  el.clearPolyominoButton.addEventListener("click", () => {
+    polyominoDraftCells = new Set(["0,0"]);
+    renderPolyominoGrid();
+  });
+  el.clearShapeDraftButton.addEventListener("click", () => {
+    shapeDraftCells = new Set(["0,0"]);
+    renderShapeMiniGrid();
+  });
+  el.addShapeButton.addEventListener("click", () => {
+    const line = shapeBankLineFromDraft();
+    if (!line) {
+      renderStatus("Draw at least one shape-bank cell before adding a shape.", "warn");
+      return;
+    }
+    el.shapeBankInput.value = appendLine(el.shapeBankInput.value, line);
+    updateRulesFromForm(false);
+    el.shapeNameInput.value = `Shape${shapeBankLineCount() + 1}`;
+    renderStatus("Drawn shape added to the Shape Bank text.", "good");
+    render();
+  });
+
+  el.screenshotInput.addEventListener("change", () => {
+    const file = el.screenshotInput.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      traceImage.href = String(reader.result ?? "");
+      renderStatus("Screenshot loaded for manual tracing.", "good");
+      render();
+    });
+    reader.readAsDataURL(file);
+  });
+  for (const input of [
+    el.screenshotOpacityInput,
+    el.screenshotXInput,
+    el.screenshotYInput,
+    el.screenshotScaleInput,
+    el.screenshotRotationInput
+  ]) {
+    input.addEventListener("input", () => {
+      updateTraceFromForm();
+      render();
+    });
+  }
+  el.clearScreenshotButton.addEventListener("click", () => {
+    traceImage.href = "";
+    el.screenshotInput.value = "";
+    renderStatus("Screenshot cleared.", "");
+    render();
+  });
 
   el.tetrominoButton.addEventListener("click", () => {
     puzzle.rules.shapeBankText = TETROMINO_PRESET;
@@ -91,17 +233,8 @@ function bindEvents() {
       render();
       return;
     }
-    if (cell !== undefined && currentTool === "cell") {
-      puzzle = toggleCellActive(puzzle, Number(cell));
-      clearComputed();
-      render();
-      return;
-    }
-    if (cell !== undefined && currentTool === "symbol") {
-      puzzle = cycleCellSymbol(puzzle, Number(cell));
-      clearComputed();
-      render();
-    }
+    if (cell === undefined) return;
+    handleCellClick(Number(cell));
   });
 
   el.solveButton.addEventListener("click", () => {
@@ -146,6 +279,7 @@ function bindEvents() {
     updateRulesFromForm(false);
     el.jsonBox.value = JSON.stringify(puzzle, null, 2);
     renderStatus("Puzzle JSON exported into the text area.", "good");
+    render();
   });
 
   el.importJsonButton.addEventListener("click", () => {
@@ -167,11 +301,87 @@ function bindEvents() {
   });
 }
 
+function handleCellClick(cell) {
+  if (!puzzle.active[cell] && currentTool !== "cell") {
+    renderStatus(`Cell ${cellLabel(cell, puzzle.width)} is inactive. Activate it before placing clues.`, "warn");
+    return;
+  }
+
+  if (currentTool === "cell") {
+    puzzle = toggleCellActive(puzzle, cell);
+    clearComputed();
+    render();
+    return;
+  }
+
+  if (currentTool === "symbol") {
+    puzzle = cycleCellSymbol(puzzle, cell);
+    clearComputed();
+    render();
+    return;
+  }
+
+  if (currentTool === "areaNumber") {
+    const value = Math.max(1, Number(el.areaClueValueInput.value) || 1);
+    puzzle = upsertCellClue("area_number", cell, { value, params: { value } });
+    clearComputed();
+    renderStatus(`Area Number ${value} placed on ${cellLabel(cell, puzzle.width)}.`, "good");
+    render();
+    return;
+  }
+
+  if (currentTool === "polyomino") {
+    const shape = shapeCellsFromDraft(polyominoDraftCells);
+    if (shape.length === 0) {
+      renderStatus("Draw a polyomino clue shape before placing it.", "warn");
+      return;
+    }
+    puzzle = upsertCellClue("polyomino", cell, {
+      params: {
+        shape,
+        allowRotations: el.polyominoRotationsInput.checked,
+        allowReflections: el.polyominoReflectionsInput.checked
+      }
+    });
+    clearComputed();
+    renderStatus(`Polyomino clue placed on ${cellLabel(cell, puzzle.width)}.`, "good");
+    render();
+    return;
+  }
+
+  if (currentTool === "relation") {
+    handleRelationCellClick(cell);
+  }
+}
+
+function handleRelationCellClick(cell) {
+  if (relationFirstCell === null) {
+    relationFirstCell = cell;
+    updateRelationHint();
+    render();
+    return;
+  }
+  if (relationFirstCell === cell) {
+    relationFirstCell = null;
+    updateRelationHint();
+    render();
+    return;
+  }
+
+  const ruleId = el.relationRuleInput.value;
+  puzzle = upsertRelationClue(ruleId, relationFirstCell, cell);
+  clearComputed();
+  renderStatus(`${ruleLabel(ruleId)} relation clue placed.`, "good");
+  relationFirstCell = null;
+  render();
+}
+
 function updateRulesFromForm(doRender = true) {
   puzzle.rules.area = Math.max(0, Number(el.areaInput.value) || 0);
   puzzle.rules.roseLabels = String(el.roseInput.value ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
   puzzle.rules.allowRotations = el.rotationsInput.checked;
   puzzle.rules.allowReflections = el.reflectionsInput.checked;
+  puzzle.rules.shapeEquivalenceAllowRotations = el.shapeEquivRotationsInput.checked;
   puzzle.rules.shapeEquivalenceAllowReflections = el.shapeEquivReflectionsInput.checked;
   puzzle.rules.shapeBankText = el.shapeBankInput.value;
   puzzle = normalizePuzzle(puzzle);
@@ -186,8 +396,104 @@ function syncFormFromPuzzle() {
   el.roseInput.value = puzzle.rules.roseLabels ?? "";
   el.rotationsInput.checked = puzzle.rules.allowRotations !== false;
   el.reflectionsInput.checked = puzzle.rules.allowReflections === true;
+  el.shapeEquivRotationsInput.checked = puzzle.rules.shapeEquivalenceAllowRotations !== false;
   el.shapeEquivReflectionsInput.checked = puzzle.rules.shapeEquivalenceAllowReflections === true;
   el.shapeBankInput.value = puzzle.rules.shapeBankText ?? "";
+  updateTraceControls();
+  updateRelationHint();
+}
+
+function setCurrentTool(tool) {
+  currentTool = tool;
+  if (tool !== "relation") relationFirstCell = null;
+  document.querySelectorAll(".tool").forEach((button) => {
+    button.classList.toggle("active", button.dataset.tool === tool);
+  });
+  updateRelationHint();
+  render();
+}
+
+function setRuleEnabled(id, enabled) {
+  const rule = RULE_REGISTRY[id];
+  if (!rule?.implemented) return;
+
+  if (enabled) {
+    enableRule(id);
+  } else {
+    disableRule(id);
+  }
+
+  puzzle = normalizePuzzle(puzzle);
+  clearComputed();
+  syncFormFromPuzzle();
+  render();
+}
+
+function enableRule(id) {
+  if (id === "precision") {
+    puzzle.rules.area = Math.max(1, Number(el.areaInput.value) || Number(puzzle.rules.area) || 4);
+    return;
+  }
+  if (id === "rose_window") {
+    puzzle.rules.roseLabels = puzzle.rules.roseLabels || el.roseInput.value || "A";
+    return;
+  }
+  if (id === "shape_bank") {
+    puzzle.rules.shapeBankText = puzzle.rules.shapeBankText || el.shapeBankInput.value || DEFAULT_BANK_SHAPE;
+    return;
+  }
+  if (id === "mingle_shape") {
+    puzzle.rules.mingle_shape = puzzle.rules.mingle_shape ?? {
+      allowRotations: puzzle.rules.shapeEquivalenceAllowRotations !== false,
+      allowReflections: puzzle.rules.shapeEquivalenceAllowReflections === true
+    };
+    return;
+  }
+  if (id === "area_number") {
+    puzzle.rules.area_number = puzzle.rules.area_number ?? {};
+    setCurrentTool("areaNumber");
+    return;
+  }
+  if (id === "polyomino") {
+    puzzle.rules.polyomino = puzzle.rules.polyomino ?? {};
+    setCurrentTool("polyomino");
+    return;
+  }
+  if (id === "gemini" || id === "delta" || id === "difference") {
+    puzzle.rules[id] = puzzle.rules[id] ?? {};
+    el.relationRuleInput.value = id;
+    setCurrentTool("relation");
+  }
+}
+
+function disableRule(id) {
+  if (id === "precision") {
+    puzzle.rules.area = 0;
+    return;
+  }
+  if (id === "rose_window") {
+    puzzle.rules.roseLabels = "";
+    return;
+  }
+  if (id === "shape_bank") {
+    puzzle.rules.shapeBankText = "";
+    return;
+  }
+
+  const rules = { ...puzzle.rules };
+  delete rules[id];
+  const clues = (puzzle.clues ?? []).filter((clue) => clue.ruleId !== id);
+  const edgeConstraints = clearEdgeRelationsForRule(id, puzzle.edgeConstraints ?? puzzle.edges ?? {});
+  puzzle = normalizePuzzle({ ...puzzle, rules, clues, edgeConstraints, edges: edgeConstraints });
+}
+
+function updateMingleOption(option, checked) {
+  const config = { ...(puzzle.rules.mingle_shape ?? {}) };
+  config[option] = checked;
+  puzzle.rules.mingle_shape = config;
+  puzzle = normalizePuzzle(puzzle);
+  clearComputed();
+  render();
 }
 
 function clearComputed() {
@@ -198,6 +504,104 @@ function clearComputed() {
 
 function render() {
   renderBoard();
+  renderRulePalette();
+  renderShapeMiniGrid();
+  renderPolyominoGrid();
+  renderValidation();
+  updateRelationHint();
+}
+
+function renderRulePalette() {
+  el.rulePalette.innerHTML = Object.values(RULE_REGISTRY)
+    .map((rule) => {
+      const active = isRuleActive(rule.id);
+      const disabled = !rule.implemented;
+      const badge = disabled ? rule.implementationStatus : active ? "active" : "available";
+      const checkbox = `<input type="checkbox" data-rule-toggle="${rule.id}" ${checkedAttr(active)} ${disabledAttr(disabled)} />`;
+      return `<section class="rule-card ${disabled ? "disabled" : ""}" title="${escapeHtml(ruleHelp(rule.id))}">
+        <div class="rule-card-head">
+          <label>${checkbox}<span>${escapeHtml(rule.label)}</span></label>
+          <span class="rule-badge">${escapeHtml(badge)}</span>
+        </div>
+        <p>${escapeHtml(ruleHelp(rule.id))}</p>
+        ${ruleControlsHtml(rule.id, active, disabled)}
+      </section>`;
+    })
+    .join("");
+}
+
+function ruleControlsHtml(id, active, disabled) {
+  if (disabled) {
+    const reason =
+      RULE_REGISTRY[id].implementationStatus === "blocked"
+        ? "Solver rejects this rule because semantics are unverified."
+        : "Solver rejects this rule until implementation edge cases are settled.";
+    return `<div class="rule-controls"><p>${escapeHtml(reason)}</p></div>`;
+  }
+  if (id === "precision") return `<div class="rule-controls"><p>Edit with the Precision area field.</p></div>`;
+  if (id === "rose_window") return `<div class="rule-controls"><p>Edit required symbols with the Rose labels field.</p></div>`;
+  if (id === "shape_bank") return `<div class="rule-controls"><p>Use the mini-grid or raw Shape Bank text.</p></div>`;
+  if (id === "area_number") {
+    return `<div class="rule-controls"><button type="button" data-select-tool="areaNumber" data-status="Area Number placement tool selected.">Place area clues</button></div>`;
+  }
+  if (id === "polyomino") {
+    return `<div class="rule-controls"><button type="button" data-select-tool="polyomino" data-status="Polyomino placement tool selected.">Place polyomino clues</button></div>`;
+  }
+  if (id === "gemini" || id === "delta" || id === "difference") {
+    return `<div class="rule-controls"><button type="button" data-select-tool="relation" data-relation-rule="${id}" data-status="${escapeHtml(ruleLabel(id))} relation tool selected.">Place relation clue</button></div>`;
+  }
+  if (id === "mingle_shape" && active) {
+    const config = puzzle.rules.mingle_shape ?? {};
+    const rotations = config.allowRotations ?? puzzle.rules.shapeEquivalenceAllowRotations ?? true;
+    const reflections = config.allowReflections ?? puzzle.rules.shapeEquivalenceAllowReflections ?? false;
+    return `<div class="rule-controls">
+      <label><input type="checkbox" data-mingle-option="allowRotations" ${checkedAttr(rotations !== false)} /> Rotation equivalence</label>
+      <label><input type="checkbox" data-mingle-option="allowReflections" ${checkedAttr(reflections === true)} /> Reflection equivalence</label>
+    </div>`;
+  }
+  return "";
+}
+
+function renderShapeMiniGrid() {
+  renderMiniGrid(el.shapeMiniGrid, shapeDraftCells);
+}
+
+function renderPolyominoGrid() {
+  renderMiniGrid(el.polyominoClueGrid, polyominoDraftCells);
+}
+
+function renderMiniGrid(container, selectedCells) {
+  let html = "";
+  for (let y = 0; y < MINI_GRID_SIZE; y += 1) {
+    for (let x = 0; x < MINI_GRID_SIZE; x += 1) {
+      const key = `${x},${y}`;
+      const classes = ["mini-cell", selectedCells.has(key) ? "active" : "", key === "0,0" ? "origin" : ""].join(" ");
+      html += `<button type="button" class="${classes}" data-mini-cell="${key}" title="${key}"></button>`;
+    }
+  }
+  container.innerHTML = html;
+}
+
+function renderValidation() {
+  const validation = validatePuzzle(puzzle);
+  const messages = [];
+  if (puzzle.activeCells.length === 0) messages.push("Add at least one active cell.");
+  if (!hasCandidateSource()) {
+    messages.push("Add Precision area, Shape Bank shapes, Area Number clues, or Polyomino clues so the solver can generate candidates.");
+  }
+  if (puzzle.rules.shape_bank && !puzzle.shapeBank?.text?.trim() && (puzzle.shapeBank?.entries ?? []).length === 0) {
+    messages.push("Shape Bank is enabled but has no shapes.");
+  }
+  messages.push(...validation.errors);
+
+  if (messages.length === 0) {
+    el.validationBox.textContent = "No validation issues.";
+    el.validationBox.className = "validation-box good";
+    return;
+  }
+
+  el.validationBox.textContent = messages.map((message) => `- ${message}`).join("\n");
+  el.validationBox.className = `validation-box ${validation.errors.length ? "bad" : "warn"}`;
 }
 
 function renderBoard() {
@@ -205,9 +609,11 @@ function renderBoard() {
   const heightPx = puzzle.height * CELL + SVG_PAD * 2;
   const regionByCell = currentSolution?.regionByCell ?? {};
   const stepEdgeKey = lastStep ? edgeKey(lastStep.edge[0], lastStep.edge[1]) : null;
+  const cellClues = cellCluesByCell();
 
   let html = "";
   html += `<rect x="0" y="0" width="${widthPx}" height="${heightPx}" rx="12" fill="#fdf8ef"></rect>`;
+  html += traceImageSvg(widthPx, heightPx);
 
   for (let y = 0; y < puzzle.height; y += 1) {
     for (let x = 0; x < puzzle.width; x += 1) {
@@ -217,17 +623,26 @@ function renderBoard() {
       const ry = SVG_PAD + y * CELL;
       const regionId = regionByCell[cell];
       const fill = active && regionId ? regionColor(regionId) : "";
-      const classes = ["cell", active ? "active-cell" : "inactive-cell", regionId ? "solution-cell" : ""].join(" ");
+      const classes = [
+        "cell",
+        traceImage.href ? "trace-cell" : "",
+        active ? "active-cell" : "inactive-cell",
+        relationFirstCell === cell ? "relation-pick-cell" : "",
+        regionId ? "solution-cell" : ""
+      ].join(" ");
       const label = cellLabel(cell, puzzle.width);
       html += `<rect class="${classes}" data-cell="${cell}" x="${rx}" y="${ry}" width="${CELL}" height="${CELL}" rx="4" ${fill ? `style="fill:${fill}"` : ""}><title>${label}</title></rect>`;
       if (active && puzzle.symbols[cell]) {
         html += `<text class="cell-symbol" x="${rx + CELL / 2}" y="${ry + CELL / 2}">${escapeHtml(puzzle.symbols[cell])}</text>`;
       }
+      html += cellClueSvg(cellClues.get(cell) ?? [], rx, ry);
       if (active && regionId) {
         html += `<text class="region-label" x="${rx + CELL - 5}" y="${ry + CELL - 5}">${regionId}</text>`;
       }
     }
   }
+
+  html += relationCluesSvg();
 
   for (const [a, b] of activeAdjacencyEdges(puzzle)) {
     const key = edgeKey(a, b);
@@ -247,13 +662,57 @@ function renderBoard() {
         html += `<text class="edge-label" x="${line.mx}" y="${line.my}">${text}</text>`;
       }
     }
-    html += `<line class="edge-hit" data-edge="${key}" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}"><title>Border ${cellLabel(a, puzzle.width)}–${cellLabel(b, puzzle.width)}</title></line>`;
+    html += `<line class="edge-hit" data-edge="${key}" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}"><title>Border ${cellLabel(a, puzzle.width)}-${cellLabel(b, puzzle.width)}</title></line>`;
   }
 
   el.boardSvg.setAttribute("viewBox", `0 0 ${widthPx} ${heightPx}`);
   el.boardSvg.setAttribute("width", String(widthPx));
   el.boardSvg.setAttribute("height", String(heightPx));
   el.boardSvg.innerHTML = html;
+}
+
+function traceImageSvg(widthPx, heightPx) {
+  if (!traceImage.href) return "";
+  const boardWidth = puzzle.width * CELL;
+  const boardHeight = puzzle.height * CELL;
+  const cx = SVG_PAD + boardWidth / 2;
+  const cy = SVG_PAD + boardHeight / 2;
+  const transform = `translate(${traceImage.x} ${traceImage.y}) translate(${cx} ${cy}) rotate(${traceImage.rotation}) scale(${traceImage.scale}) translate(${-cx} ${-cy})`;
+  return `<g class="trace-image" opacity="${traceImage.opacity}" transform="${transform}">
+    <image href="${escapeHtml(traceImage.href)}" x="${SVG_PAD}" y="${SVG_PAD}" width="${boardWidth}" height="${boardHeight}" preserveAspectRatio="none"></image>
+  </g>`;
+}
+
+function cellClueSvg(clues, rx, ry) {
+  let html = "";
+  const areaClue = clues.find((clue) => clue.ruleId === "area_number");
+  if (areaClue) {
+    const value = areaClue.value ?? areaClue.params?.value ?? areaClue.params?.area;
+    html += `<circle class="cell-clue-bg" cx="${rx + 12}" cy="${ry + 12}" r="10"></circle>`;
+    html += `<text class="cell-clue" x="${rx + 12}" y="${ry + 12}">${escapeHtml(value)}</text>`;
+  }
+  const polyClue = clues.find((clue) => clue.ruleId === "polyomino");
+  if (polyClue) {
+    html += `<circle class="cell-clue-bg poly-clue-bg" cx="${rx + CELL - 12}" cy="${ry + 12}" r="10"></circle>`;
+    html += `<text class="cell-clue" x="${rx + CELL - 12}" y="${ry + 12}">P</text>`;
+  }
+  return html;
+}
+
+function relationCluesSvg() {
+  let html = "";
+  for (const clue of puzzle.clues ?? []) {
+    if (clue.type !== "relation" || clue.source === "edgeConstraints") continue;
+    const cells = relationCellsFromClue(clue);
+    if (!cells) continue;
+    const left = cellCenter(cells[0]);
+    const right = cellCenter(cells[1]);
+    const mx = (left.x + right.x) / 2;
+    const my = (left.y + right.y) / 2;
+    html += `<line class="relation-clue-line" x1="${left.x}" y1="${left.y}" x2="${right.x}" y2="${right.y}"></line>`;
+    html += `<text class="relation-clue-label" x="${mx}" y="${my}">${escapeHtml(relationClueLabel(clue))}</text>`;
+  }
+  return html;
 }
 
 function edgeLine(a, b) {
@@ -267,6 +726,183 @@ function edgeLine(a, b) {
   const x = SVG_PAD + ca.x * CELL;
   const y = SVG_PAD + Math.max(ca.y, cb.y) * CELL;
   return { x1: x + 5, y1: y, x2: x + CELL - 5, y2: y, mx: x + CELL / 2, my: y };
+}
+
+function upsertCellClue(ruleId, cell, data) {
+  const rules = { ...puzzle.rules, [ruleId]: puzzle.rules[ruleId] ?? {} };
+  const clues = (puzzle.clues ?? []).filter((clue) => !(clue.ruleId === ruleId && clue.location?.cell === cell));
+  clues.push({
+    id: `${ruleId}:${cell}`,
+    type: "cell",
+    ruleId,
+    location: { type: "cell", cell },
+    ...data
+  });
+  return normalizePuzzle({ ...puzzle, rules, clues });
+}
+
+function upsertRelationClue(ruleId, firstCell, secondCell) {
+  const key = edgeKey(firstCell, secondCell);
+  const clue = {
+    id: `relation:${ruleId}:${key}`,
+    type: "relation",
+    ruleId,
+    location: { type: "pair", cells: [firstCell, secondCell] },
+    regionRefs: [{ cell: firstCell }, { cell: secondCell }]
+  };
+  if (ruleId === "difference") {
+    const value = Math.max(0, Number(el.differenceValueInput.value) || 0);
+    clue.value = value;
+    clue.params = { difference: value };
+  }
+  const rules = { ...puzzle.rules, [ruleId]: puzzle.rules[ruleId] ?? {} };
+  const clues = (puzzle.clues ?? []).filter((existing) => existing.id !== clue.id);
+  clues.push(clue);
+  return normalizePuzzle({ ...puzzle, rules, clues });
+}
+
+function cellCluesByCell() {
+  const byCell = new Map();
+  for (const clue of puzzle.clues ?? []) {
+    if (clue.type !== "cell" || clue.location?.cell === undefined) continue;
+    const cell = Number(clue.location.cell);
+    const list = byCell.get(cell) ?? [];
+    list.push(clue);
+    byCell.set(cell, list);
+  }
+  return byCell;
+}
+
+function relationCellsFromClue(clue) {
+  const refs = clue.regionRefs ?? clue.regions;
+  if (Array.isArray(refs) && refs.length === 2) {
+    const cells = refs.map((ref) => Number(typeof ref === "object" ? ref.cell : ref));
+    return cells.every(Number.isInteger) ? cells : null;
+  }
+  if (Array.isArray(clue.location?.cells) && clue.location.cells.length === 2) {
+    const cells = clue.location.cells.map(Number);
+    return cells.every(Number.isInteger) ? cells : null;
+  }
+  if (Array.isArray(clue.cells) && clue.cells.length === 2) {
+    const cells = clue.cells.map(Number);
+    return cells.every(Number.isInteger) ? cells : null;
+  }
+  return null;
+}
+
+function relationClueLabel(clue) {
+  if (clue.ruleId === "gemini") return "G";
+  if (clue.ruleId === "delta") return "D";
+  if (clue.ruleId === "difference") return `Diff ${clue.value ?? clue.params?.difference ?? 0}`;
+  return ruleLabel(clue.ruleId);
+}
+
+function cellCenter(cell) {
+  const point = xy(cell, puzzle.width);
+  return {
+    x: SVG_PAD + point.x * CELL + CELL / 2,
+    y: SVG_PAD + point.y * CELL + CELL / 2
+  };
+}
+
+function clearEdgeRelationsForRule(ruleId, edgeConstraints) {
+  const relation = ruleId === "gemini" ? "sameShape" : ruleId === "delta" ? "differentShape" : null;
+  if (!relation) return edgeConstraints;
+  const next = {};
+  for (const [key, value] of Object.entries(edgeConstraints)) {
+    const constraint = { ...value };
+    if (constraint.relation === relation) constraint.relation = null;
+    if (constraint.state || constraint.relation) next[key] = constraint;
+  }
+  return next;
+}
+
+function toggleDraftCell(targetSet, key) {
+  if (!key) return;
+  if (targetSet.has(key)) targetSet.delete(key);
+  else targetSet.add(key);
+}
+
+function shapeCellsFromDraft(targetSet) {
+  const cells = [...targetSet].map((key) => key.split(",").map(Number));
+  return cells.length ? normalizeShape(cells) : [];
+}
+
+function shapeBankLineFromDraft() {
+  const cells = shapeCellsFromDraft(shapeDraftCells);
+  if (cells.length === 0) return "";
+  const name = sanitizeShapeName(el.shapeNameInput.value) || `Shape${shapeBankLineCount() + 1}`;
+  return `${name}: ${cells.map(([x, y]) => `${x},${y}`).join(" ")}`;
+}
+
+function sanitizeShapeName(value) {
+  return String(value ?? "")
+    .trim()
+    .replace(/[^A-Za-z0-9_-]/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function appendLine(text, line) {
+  const current = String(text ?? "").trimEnd();
+  return current ? `${current}\n${line}` : line;
+}
+
+function shapeBankLineCount() {
+  return String(el.shapeBankInput.value ?? "")
+    .split(/\r?\n/)
+    .filter((line) => line.trim() && !line.trim().startsWith("#")).length;
+}
+
+function updateTraceFromForm() {
+  traceImage.opacity = clamp(Number(el.screenshotOpacityInput.value), 0, 1);
+  traceImage.x = Number(el.screenshotXInput.value) || 0;
+  traceImage.y = Number(el.screenshotYInput.value) || 0;
+  traceImage.scale = clamp(Number(el.screenshotScaleInput.value) || 1, 0.1, 5);
+  traceImage.rotation = Number(el.screenshotRotationInput.value) || 0;
+}
+
+function updateTraceControls() {
+  el.screenshotOpacityInput.value = String(traceImage.opacity);
+  el.screenshotXInput.value = String(traceImage.x);
+  el.screenshotYInput.value = String(traceImage.y);
+  el.screenshotScaleInput.value = String(traceImage.scale);
+  el.screenshotRotationInput.value = String(traceImage.rotation);
+}
+
+function updateRelationHint() {
+  if (currentTool !== "relation") {
+    el.relationPickHint.textContent = "Choose Relation pair clue, then click two active cells in different regions.";
+    return;
+  }
+  if (relationFirstCell === null) {
+    el.relationPickHint.textContent = `Click the first cell for a ${ruleLabel(el.relationRuleInput.value)} relation clue.`;
+    return;
+  }
+  el.relationPickHint.textContent = `First cell: ${cellLabel(relationFirstCell, puzzle.width)}. Click the second cell.`;
+}
+
+function hasCandidateSource() {
+  return (
+    Number(puzzle.rules.precision?.area ?? puzzle.rules.area) > 0 ||
+    Boolean(puzzle.shapeBank?.text?.trim()) ||
+    (puzzle.shapeBank?.entries ?? []).length > 0 ||
+    (puzzle.clues ?? []).some((clue) => clue.ruleId === "area_number" || clue.ruleId === "polyomino")
+  );
+}
+
+function isRuleActive(id) {
+  if (id === "precision") return Number(puzzle.rules.precision?.area ?? puzzle.rules.area) > 0;
+  if (id === "rose_window") return Boolean(puzzle.rules.rose_window);
+  if (id === "shape_bank") return Boolean(puzzle.rules.shape_bank);
+  return puzzle.rules[id] !== undefined;
+}
+
+function ruleHelp(id) {
+  return RULE_HELP[id] ?? "Registered rule.";
+}
+
+function ruleLabel(id) {
+  return RULE_REGISTRY[id]?.label ?? id;
 }
 
 function showSolveResult(result) {
@@ -288,7 +924,7 @@ function showSolveResult(result) {
 function showStepResult(result) {
   if (result.step) {
     renderStatus(`${result.step.title}\n\n${result.step.reason}`, "good");
-    el.solutionText.textContent = "The highlighted border is the next forced step. Use “Apply step” to add it to the puzzle state.";
+    el.solutionText.textContent = "The highlighted border is the next forced step. Use Apply step to add it to the puzzle state.";
     return;
   }
   const statusClass = result.status === "no_solution" ? "bad" : "warn";
@@ -321,6 +957,14 @@ function regionColor(regionId) {
 
 function maxNodes() {
   return Math.max(1000, Number(el.maxNodesInput.value) || 250000);
+}
+
+function checkedAttr(value) {
+  return value ? "checked" : "";
+}
+
+function disabledAttr(value) {
+  return value ? "disabled" : "";
 }
 
 function clamp(value, min, max) {

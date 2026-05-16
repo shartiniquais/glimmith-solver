@@ -32,8 +32,14 @@
           <button class="tool active" data-tool="cell" type="button">Active / hole cells</button>
           <button class="tool" data-tool="symbol" type="button">Cycle symbols</button>
           <button class="tool" data-tool="edge" type="button">Cycle borders</button>
+          <button class="tool" data-tool="relation" type="button">Relation pair clue</button>
+          <button class="tool" data-tool="areaNumber" type="button">Area number clue</button>
+          <button class="tool" data-tool="polyomino" type="button">Polyomino clue</button>
         </div>
         <p class="hint">Border cycle: unknown → cut → join → Gemini/same-shape → Delta/different-shape.</p>
+
+        <h2>Rule Palette</h2>
+        <div id="rulePalette" class="rule-palette" aria-label="Rule palette"></div>
 
         <h2>Rules</h2>
         <label class="stacked">Precision area
@@ -47,12 +53,70 @@
           <label><input id="rotationsInput" type="checkbox" checked /> Shape-bank rotations</label>
           <label><input id="reflectionsInput" type="checkbox" /> Shape-bank reflections</label>
         </div>
-        <label class="checkbox-row single"><input id="shapeEquivReflectionsInput" type="checkbox" /> Treat reflected regions as same shape for Gemini/Delta</label>
+        <label class="checkbox-row single"><input id="shapeEquivRotationsInput" type="checkbox" checked /> Treat rotated regions as same shape for comparisons</label>
+        <label class="checkbox-row single"><input id="shapeEquivReflectionsInput" type="checkbox" /> Treat reflected regions as same shape for comparisons</label>
+
+        <h2>Cell Clues</h2>
+        <label class="stacked">Area number value
+          <input id="areaClueValueInput" type="number" min="1" max="20" value="4" />
+        </label>
+        <label class="stacked">Relation clue type
+          <select id="relationRuleInput">
+            <option value="gemini">Gemini / same shape</option>
+            <option value="delta">Delta / different shape</option>
+            <option value="difference">Difference / area gap</option>
+          </select>
+        </label>
+        <label class="stacked">Difference value
+          <input id="differenceValueInput" type="number" min="0" max="20" value="1" />
+        </label>
+        <p id="relationPickHint" class="hint">Choose Relation pair clue, then click two active cells in different regions.</p>
+
+        <div class="mini-editor">
+          <div class="mini-editor-header">
+            <strong>Polyomino clue shape</strong>
+            <button id="clearPolyominoButton" type="button">Clear</button>
+          </div>
+          <div id="polyominoClueGrid" class="mini-grid" aria-label="Polyomino clue shape editor"></div>
+          <div class="row checkbox-row">
+            <label><input id="polyominoRotationsInput" type="checkbox" checked /> Rotations</label>
+            <label><input id="polyominoReflectionsInput" type="checkbox" /> Reflections</label>
+          </div>
+          <p class="hint">Draw a shape here, then place it with the Polyomino clue tool.</p>
+        </div>
 
         <label class="stacked">Shape bank
           <textarea id="shapeBankInput" spellcheck="false" placeholder="O4: 0,0 1,0 0,1 1,1"></textarea>
         </label>
+        <div class="mini-editor">
+          <div class="mini-editor-header">
+            <strong>Draw shape-bank entry</strong>
+            <button id="clearShapeDraftButton" type="button">Clear</button>
+          </div>
+          <label class="stacked">Shape name
+            <input id="shapeNameInput" type="text" value="Shape1" />
+          </label>
+          <div id="shapeMiniGrid" class="mini-grid" aria-label="Shape bank mini-grid editor"></div>
+          <div class="row">
+            <button id="addShapeButton" type="button">Add drawn shape</button>
+          </div>
+        </div>
         <button id="tetrominoButton" type="button">Load tetromino preset</button>
+
+        <h2>Screenshot Trace</h2>
+        <label class="stacked">Background image
+          <input id="screenshotInput" type="file" accept="image/*" />
+        </label>
+        <label class="stacked">Image opacity
+          <input id="screenshotOpacityInput" type="range" min="0" max="1" step="0.05" value="0.35" />
+        </label>
+        <div class="row compact">
+          <label>X <input id="screenshotXInput" type="number" step="5" value="0" /></label>
+          <label>Y <input id="screenshotYInput" type="number" step="5" value="0" /></label>
+          <label>Scale <input id="screenshotScaleInput" type="number" min="0.1" max="5" step="0.05" value="1" /></label>
+          <label>Rotate <input id="screenshotRotationInput" type="number" step="1" value="0" /></label>
+        </div>
+        <button id="clearScreenshotButton" type="button">Clear screenshot</button>
 
         <h2>Search</h2>
         <label class="stacked">Max solver nodes
@@ -80,6 +144,7 @@
 
       <section class="panel output">
         <h2>Result</h2>
+        <div id="validationBox" class="validation-box">No validation issues.</div>
         <div id="statusBox" class="status">Ready.</div>
         <pre id="solutionText"></pre>
         <h2>Puzzle JSON</h2>
