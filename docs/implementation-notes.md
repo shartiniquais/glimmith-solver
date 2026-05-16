@@ -47,8 +47,8 @@ Polyomino clue:
   location: { type: "cell", cell: 0 },
   params: {
     shape: [[0, 0], [0, 1]],
-    allowRotations: false,
-    allowReflections: false
+    allowRotations: true,
+    allowReflections: true
   }
 }
 ```

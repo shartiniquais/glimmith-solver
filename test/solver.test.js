@@ -145,6 +145,22 @@ test("Polyomino rejects impossible clue shapes", () => {
   assert.equal(result.status, "no_solution");
 });
 
+test("Shape Bank allows reflected placements by default", () => {
+  const puzzle = createPuzzle(2, 3);
+  puzzle.rules.area = 0;
+  puzzle.active = [false, true, false, true, true, true];
+  puzzle.activeCells = [1, 3, 4, 5];
+  puzzle.rules.shapeBankText = "L4: 0,0 0,1 0,2 1,2";
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "unique_solution");
+  assert.deepEqual(result.solutions[0].regions.map((region) => region.cells), [[1, 3, 4, 5]]);
+
+  puzzle.rules.allowReflections = false;
+  const withoutReflections = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(withoutReflections.status, "no_solution");
+});
+
 test("Shape Bank and Gemini interact through configurable shape comparison", () => {
   let puzzle = createPuzzle(2, 2);
   puzzle.rules.area = 2;
@@ -164,6 +180,20 @@ test("Shape Bank and Delta can prove no solution", () => {
 
   const result = solvePuzzle(puzzle, { limit: 2 });
   assert.equal(result.status, "no_solution");
+});
+
+test("Gemini and Delta use reflection equivalence by default", () => {
+  const geminiDefault = solvePuzzle(mirroredShapeRelationPuzzle("gemini"), { limit: 2 });
+  assert.equal(geminiDefault.status, "unique_solution");
+
+  const geminiWithoutReflections = solvePuzzle(mirroredShapeRelationPuzzle("gemini", false), { limit: 2 });
+  assert.equal(geminiWithoutReflections.status, "no_solution");
+
+  const deltaDefault = solvePuzzle(mirroredShapeRelationPuzzle("delta"), { limit: 2 });
+  assert.equal(deltaDefault.status, "no_solution");
+
+  const deltaWithoutReflections = solvePuzzle(mirroredShapeRelationPuzzle("delta", false), { limit: 2 });
+  assert.equal(deltaWithoutReflections.status, "unique_solution");
 });
 
 test("Mingle Shape rejects adjacent same-shape regions", () => {
@@ -206,6 +236,9 @@ test("Mingle Shape allows non-adjacent duplicate shapes", () => {
 });
 
 test("Mingle Shape respects reflection equivalence", () => {
+  const defaultReflections = solvePuzzle(mirroredMinglePuzzle({}), { limit: 2 });
+  assert.equal(defaultReflections.status, "no_solution");
+
   const withoutReflections = solvePuzzle(mirroredMinglePuzzle({ allowReflections: false }), { limit: 2 });
   assert.equal(withoutReflections.status, "unique_solution");
   assert.deepEqual(withoutReflections.solutions[0].regions.map((region) => region.cells), [
@@ -218,10 +251,30 @@ test("Mingle Shape respects reflection equivalence", () => {
 });
 
 function mirroredMinglePuzzle(mingleConfig) {
+  const puzzle = mirroredShapePuzzle();
+  puzzle.rules.mingle_shape = mingleConfig;
+  return puzzle;
+}
+
+function mirroredShapeRelationPuzzle(ruleId, allowReflections) {
+  const puzzle = mirroredShapePuzzle();
+  if (allowReflections !== undefined) puzzle.rules.shapeEquivalenceAllowReflections = allowReflections;
+  puzzle.rules[ruleId] = {};
+  puzzle.clues = [
+    {
+      id: `${ruleId}_edge`,
+      type: "relation",
+      ruleId,
+      location: { type: "edge", cells: [2, 3] },
+      regionRefs: [{ cell: 2 }, { cell: 3 }]
+    }
+  ];
+  return puzzle;
+}
+
+function mirroredShapePuzzle() {
   let puzzle = createPuzzle(6, 2);
   puzzle.rules.area = 4;
-  puzzle.rules.mingle_shape = mingleConfig;
-  puzzle.rules.shapeEquivalenceAllowReflections = false;
   puzzle.active = [
     false, true, true, true, true, false,
     true, true, false, false, true, true
@@ -236,6 +289,30 @@ function mirroredMinglePuzzle(mingleConfig) {
   puzzle = setEdgeState(puzzle, 2, 3, "cut");
   return puzzle;
 }
+
+test("Polyomino clues allow reflected placements by default", () => {
+  const puzzle = createPuzzle(2, 3);
+  puzzle.rules.area = 0;
+  puzzle.active = [false, true, false, true, true, true];
+  puzzle.activeCells = [1, 3, 4, 5];
+  puzzle.clues = [
+    {
+      id: "l_clue",
+      type: "cell",
+      ruleId: "polyomino",
+      location: { type: "cell", cell: 1 },
+      params: { shape: [[0, 0], [0, 1], [0, 2], [1, 2]] }
+    }
+  ];
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "unique_solution");
+  assert.deepEqual(result.solutions[0].regions.map((region) => region.cells), [[1, 3, 4, 5]]);
+
+  puzzle.clues[0].params.allowReflections = false;
+  const withoutReflections = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(withoutReflections.status, "no_solution");
+});
 
 test("Polyomino clue placement uses clue reflection settings", () => {
   const basePuzzle = createPuzzle(3, 3);

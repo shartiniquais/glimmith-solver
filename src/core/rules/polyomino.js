@@ -81,10 +81,10 @@ function polyominoShapeKey(clue, context) {
 function polyominoOptions(clue, context) {
   const config = context.ruleConfigs.polyomino ?? {};
   const allowRotations = clue.params?.allowRotations ?? config.allowRotations ?? context.puzzle.shapeBank?.allowRotations ?? true;
-  const allowReflections = clue.params?.allowReflections ?? config.allowReflections ?? context.puzzle.shapeBank?.allowReflections;
+  const allowReflections = clue.params?.allowReflections ?? config.allowReflections ?? context.puzzle.shapeBank?.allowReflections ?? true;
   return {
     allowRotations: allowRotations !== false,
-    allowReflections: allowReflections === true
+    allowReflections: allowReflections !== false
   };
 }
 

@@ -537,9 +537,9 @@ function syncFormFromPuzzle() {
   el.areaInput.value = String(puzzle.rules.area ?? 0);
   el.roseInput.value = puzzle.rules.roseLabels ?? "";
   el.rotationsInput.checked = puzzle.rules.allowRotations !== false;
-  el.reflectionsInput.checked = puzzle.rules.allowReflections === true;
+  el.reflectionsInput.checked = puzzle.rules.allowReflections !== false;
   el.shapeEquivRotationsInput.checked = puzzle.rules.shapeEquivalenceAllowRotations !== false;
-  el.shapeEquivReflectionsInput.checked = puzzle.rules.shapeEquivalenceAllowReflections === true;
+  el.shapeEquivReflectionsInput.checked = puzzle.rules.shapeEquivalenceAllowReflections !== false;
   el.shapeBankInput.value = puzzle.rules.shapeBankText ?? "";
   updateTraceControls();
   updateRelationHint();
@@ -587,7 +587,7 @@ function enableRule(id) {
   if (id === "mingle_shape") {
     puzzle.rules.mingle_shape = puzzle.rules.mingle_shape ?? {
       allowRotations: puzzle.rules.shapeEquivalenceAllowRotations !== false,
-      allowReflections: puzzle.rules.shapeEquivalenceAllowReflections === true
+      allowReflections: puzzle.rules.shapeEquivalenceAllowReflections !== false
     };
     return;
   }
@@ -765,10 +765,10 @@ function ruleControlsHtml(id, active, disabled) {
   if (id === "mingle_shape" && active) {
     const config = puzzle.rules.mingle_shape ?? {};
     const rotations = config.allowRotations ?? puzzle.rules.shapeEquivalenceAllowRotations ?? true;
-    const reflections = config.allowReflections ?? puzzle.rules.shapeEquivalenceAllowReflections ?? false;
+    const reflections = config.allowReflections ?? puzzle.rules.shapeEquivalenceAllowReflections ?? true;
     return `<div class="rule-controls">
       <label><input type="checkbox" data-mingle-option="allowRotations" ${checkedAttr(rotations !== false)} /> Rotation equivalence</label>
-      <label><input type="checkbox" data-mingle-option="allowReflections" ${checkedAttr(reflections === true)} /> Reflection equivalence</label>
+      <label><input type="checkbox" data-mingle-option="allowReflections" ${checkedAttr(reflections !== false)} /> Reflection equivalence</label>
     </div>`;
   }
   return "";
@@ -958,7 +958,7 @@ function cellClueInspectorHtml(clue, label) {
   if (clue.ruleId === "polyomino") {
     const cells = clue.params?.shape ?? [];
     const rotations = clue.params?.allowRotations !== false;
-    const reflections = clue.params?.allowReflections === true;
+    const reflections = clue.params?.allowReflections !== false;
     return `<div class="inspector-stack">
       <p>${escapeHtml(label)} polyomino clue, ${cells.length} cell${cells.length === 1 ? "" : "s"}.</p>
       <label class="checkbox-row single"><input type="checkbox" ${checkedAttr(rotations)} data-clue-id="${escapeHtml(clue.id)}" data-poly-option="allowRotations" /> Allow rotations</label>

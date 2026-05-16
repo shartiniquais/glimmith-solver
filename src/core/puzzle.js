@@ -33,9 +33,9 @@ export function createPuzzle(width = 6, height = 6) {
       roseLabels: "",
       shapeBankText: "",
       allowRotations: true,
-      allowReflections: false,
+      allowReflections: true,
       shapeEquivalenceAllowRotations: true,
-      shapeEquivalenceAllowReflections: false
+      shapeEquivalenceAllowReflections: true
     },
     shapeBank: {
       text: ""
@@ -267,9 +267,9 @@ function normalizeRules(raw) {
   rules.roseLabels = roseLabels;
   rules.shapeBankText = String(shapeBankText ?? "");
   rules.allowRotations = allowRotations !== false;
-  rules.allowReflections = allowReflections === true;
+  rules.allowReflections = allowReflections !== false;
   rules.shapeEquivalenceAllowRotations = shapeEquivalenceAllowRotations !== false;
-  rules.shapeEquivalenceAllowReflections = shapeEquivalenceAllowReflections === true;
+  rules.shapeEquivalenceAllowReflections = shapeEquivalenceAllowReflections !== false;
 
   if (area > 0) {
     rules.precision = {
@@ -300,10 +300,14 @@ function normalizeShapeBank(raw, rules) {
   const shapeBank = {
     text: String(text ?? ""),
     entries,
-    allowRotations: incoming.allowRotations ?? rules.allowRotations,
-    allowReflections: incoming.allowReflections ?? rules.allowReflections,
-    shapeEquivalenceAllowRotations: incoming.shapeEquivalenceAllowRotations ?? rules.shapeEquivalenceAllowRotations,
-    shapeEquivalenceAllowReflections: incoming.shapeEquivalenceAllowReflections ?? rules.shapeEquivalenceAllowReflections
+    allowRotations: hasOwn(raw.rules, "allowRotations") ? rules.allowRotations : incoming.allowRotations ?? rules.allowRotations,
+    allowReflections: hasOwn(raw.rules, "allowReflections") ? rules.allowReflections : incoming.allowReflections ?? rules.allowReflections,
+    shapeEquivalenceAllowRotations: hasOwn(raw.rules, "shapeEquivalenceAllowRotations")
+      ? rules.shapeEquivalenceAllowRotations
+      : incoming.shapeEquivalenceAllowRotations ?? rules.shapeEquivalenceAllowRotations,
+    shapeEquivalenceAllowReflections: hasOwn(raw.rules, "shapeEquivalenceAllowReflections")
+      ? rules.shapeEquivalenceAllowReflections
+      : incoming.shapeEquivalenceAllowReflections ?? rules.shapeEquivalenceAllowReflections
   };
 
   if (incoming.exactUses !== undefined) shapeBank.exactUses = Number(incoming.exactUses);

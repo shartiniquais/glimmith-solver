@@ -176,11 +176,11 @@ function generateShapePlacementCandidates(puzzle, shapes, maxCandidates, source 
     if (puzzle.rules.precision?.area > 0 && shape.cells.length !== puzzle.rules.precision.area) continue;
     const transformOptions = shape.options ?? {
       allowRotations: puzzle.shapeBank?.allowRotations !== false,
-      allowReflections: puzzle.shapeBank?.allowReflections === true
+      allowReflections: puzzle.shapeBank?.allowReflections !== false
     };
     const transforms = shapeTransforms(shape.cells, {
       allowRotations: transformOptions.allowRotations !== false,
-      allowReflections: transformOptions.allowReflections === true
+      allowReflections: transformOptions.allowReflections !== false
     });
     for (const transformed of transforms) {
       const bounds = boundsOfShape(transformed);

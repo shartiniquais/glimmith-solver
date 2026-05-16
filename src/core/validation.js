@@ -147,7 +147,7 @@ function validateShapeBank(puzzle, errors) {
     }
     const placements = shapeTransforms(shape.cells, {
       allowRotations: puzzle.shapeBank?.allowRotations !== false,
-      allowReflections: puzzle.shapeBank?.allowReflections === true
+      allowReflections: puzzle.shapeBank?.allowReflections !== false
     }).some((transformed) => {
       const bounds = boundsOfShape(transformed);
       return bounds.width <= puzzle.width && bounds.height <= puzzle.height;

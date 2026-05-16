@@ -5,7 +5,7 @@ export function shapeComparisonOptions(puzzle, overrides = {}) {
   const allowReflections = overrides.allowReflections ?? puzzle.rules?.shapeEquivalenceAllowReflections;
   return {
     allowRotations: allowRotations !== false,
-    allowReflections: allowReflections === true
+    allowReflections: allowReflections !== false
   };
 }
 

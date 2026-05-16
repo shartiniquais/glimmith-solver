@@ -32,6 +32,33 @@ test("legacy puzzle shape normalizes to canonical version 2 schema", () => {
   assert.deepEqual(puzzle.metadata, {});
 });
 
+test("shape comparison defaults match confirmed game semantics", () => {
+  const puzzle = createPuzzle(2, 2);
+  assert.equal(puzzle.rules.allowRotations, true);
+  assert.equal(puzzle.rules.allowReflections, true);
+  assert.equal(puzzle.rules.shapeEquivalenceAllowRotations, true);
+  assert.equal(puzzle.rules.shapeEquivalenceAllowReflections, true);
+  assert.equal(puzzle.shapeBank.allowRotations, true);
+  assert.equal(puzzle.shapeBank.allowReflections, true);
+  assert.equal(puzzle.shapeBank.shapeEquivalenceAllowRotations, true);
+  assert.equal(puzzle.shapeBank.shapeEquivalenceAllowReflections, true);
+
+  const explicitOverride = normalizePuzzle({
+    width: 2,
+    height: 2,
+    rules: {
+      allowRotations: false,
+      allowReflections: false,
+      shapeEquivalenceAllowRotations: false,
+      shapeEquivalenceAllowReflections: false
+    }
+  });
+  assert.equal(explicitOverride.rules.allowRotations, false);
+  assert.equal(explicitOverride.rules.allowReflections, false);
+  assert.equal(explicitOverride.rules.shapeEquivalenceAllowRotations, false);
+  assert.equal(explicitOverride.rules.shapeEquivalenceAllowReflections, false);
+});
+
 test("legacy edge relation is represented as a generic relation clue", () => {
   let puzzle = createPuzzle(2, 2);
   puzzle.rules.area = 2;
