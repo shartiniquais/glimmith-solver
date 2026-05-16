@@ -1,0 +1,614 @@
+{
+  "schemaVersion": 2,
+  "updated": "2026-05-16",
+  "subject": "The Artisan of Glimmith rule inventory",
+  "implementationStatusLegend": {
+    "ready": "Mechanics are verified enough to implement now.",
+    "experimental": "Mechanics are likely, but unresolved edge cases remain.",
+    "blocked": "Exact semantics are not verified enough for faithful solving."
+  },
+  "implementationPolicy": {
+    "blockedRuleSolverBehavior": "reject_not_implemented_semantics_unverified",
+    "blockedRuleUiPolicy": "placeholder_only_if_useful",
+    "shapeComparison": "Support configurable rotation and reflection equivalence.",
+    "relationClues": "Model relation clues as constraints between two regions, not as simple edge states only."
+  },
+  "rules": [
+    {
+      "id": "precision",
+      "canonicalName": "Precision",
+      "implementationStatus": "ready",
+      "alternateNames": ["Exact area", "No More No Less"],
+      "meaning": "Every region must contain exactly the configured number of cells.",
+      "scope": ["one_region", "all_regions", "numbers"],
+      "visualEditorInput": ["global_area_integer"],
+      "solverEncoding": ["candidate_filter"],
+      "rotationsReflections": "not_relevant",
+      "localCandidateElimination": "yes",
+      "testPuzzleIdea": "Use a 2 by 3 board where only two triomino regions satisfy precision = 3.",
+      "sourceUrls": [
+        "https://camzillasmom.com/the-artisan-of-glimmith-precision-window-puzzle-solutions/",
+        "https://steamcommunity.com/stats/4160210/achievements"
+      ],
+      "confidence": "high",
+      "openQuestions": []
+    },
+    {
+      "id": "shape_bank",
+      "canonicalName": "Shape Bank",
+      "implementationStatus": "ready",
+      "alternateNames": ["Allowed shapes", "Bank"],
+      "meaning": "Every region must match one of the displayed allowed shapes.",
+      "scope": ["shape_bank", "all_regions", "shapes"],
+      "visualEditorInput": ["allowed_polyominoes", "allow_rotations", "allow_reflections"],
+      "solverEncoding": ["candidate_filter", "optional_shape_use_cardinality"],
+      "rotationsReflections": "yes_per_puzzle",
+      "shapeComparison": {
+        "allowRotations": "configurable",
+        "allowReflections": "configurable"
+      },
+      "implementationModel": {
+        "shapeUsePolicy": "reusable_allowed_shape_set",
+        "optionalFutureFields": ["exactUses", "maxUses"],
+        "enforceUseLimitsOnlyWhenSupplied": true
+      },
+      "localCandidateElimination": "yes",
+      "testPuzzleIdea": "Allow only a straight triomino in the bank and reject an otherwise valid L-triomino region.",
+      "sourceUrls": [
+        "https://steamcommunity.com/stats/4160210/achievements",
+        "https://gamefaqs.gamespot.com/pc/607835-the-artisan-of-glimmith/achievements",
+        "https://camzillasmom.com/the-artisan-of-glimmith-mingle-shape-window-puzzle-solutions/"
+      ],
+      "confidence": "high",
+      "openQuestions": [
+        "Confirm whether bank entries can be reused unlimited times or whether some puzzles limit each listed shape to one use."
+      ]
+    },
+    {
+      "id": "rose_window",
+      "canonicalName": "Rose Windows",
+      "implementationStatus": "ready",
+      "alternateNames": ["Rose Window", "One of each symbol"],
+      "meaning": "Every region must contain exactly one of each symbol type used by the rule.",
+      "scope": ["symbols_inside_regions", "all_regions"],
+      "visualEditorInput": ["symbol_grid", "required_symbol_counts"],
+      "solverEncoding": ["candidate_filter", "symbol_count_constraint"],
+      "rotationsReflections": "not_relevant",
+      "implementationModel": {
+        "requiredSymbolCounts": "map_symbol_id_to_required_count",
+        "notHardCodedToOneSymbolFamily": true
+      },
+      "localCandidateElimination": "yes",
+      "testPuzzleIdea": "With symbols A, A, B, B, reject any candidate region that lacks one A and one B.",
+      "sourceUrls": [
+        "https://camzillasmom.com/the-artisan-of-glimmith-mingle-shape-window-puzzle-solutions/",
+        "https://www.gamespew.com/2026/03/the-artisan-of-glimmith-review/",
+        "https://steamcommunity.com/stats/4160210/achievements"
+      ],
+      "confidence": "high",
+      "openQuestions": [
+        "Confirm behavior when multiple symbol families appear in one puzzle."
+      ]
+    },
+    {
+      "id": "gemini",
+      "canonicalName": "Gemini",
+      "implementationStatus": "ready",
+      "alternateNames": ["Same-shape edge clue"],
+      "meaning": "The two regions touching the clue must have the same shape.",
+      "scope": ["two_adjacent_regions", "shapes", "clue_edges_or_vertices"],
+      "visualEditorInput": ["same_shape_relation_marker", "allow_rotations", "allow_reflections"],
+      "solverEncoding": ["pairwise_candidate_compatibility"],
+      "rotationsReflections": "yes_per_puzzle",
+      "shapeComparison": {
+        "allowRotations": "configurable",
+        "allowReflections": "configurable"
+      },
+      "relationModel": {
+        "kind": "two_region_relation_clue",
+        "notSimpleEdgeStateOnly": true
+      },
+      "localCandidateElimination": "partial",
+      "testPuzzleIdea": "Place a Gemini marker between a straight triomino candidate and an L-triomino candidate and reject the mixed assignment.",
+      "sourceUrls": [
+        "https://camzillasmom.com/the-artisan-of-glimmith-window-3-watermill-puzzle-solutions/",
+        "https://camzillasmom.com/the-artisan-of-glimmith-precision-window-puzzle-solutions/"
+      ],
+      "confidence": "high",
+      "openQuestions": [
+        "Confirm whether reflections are always accepted or controlled by per-puzzle shape equivalence."
+      ]
+    },
+    {
+      "id": "delta",
+      "canonicalName": "Delta",
+      "implementationStatus": "ready",
+      "alternateNames": ["Different-shape edge clue"],
+      "meaning": "The two regions touching the clue must have different shapes.",
+      "scope": ["two_adjacent_regions", "shapes", "clue_edges_or_vertices"],
+      "visualEditorInput": ["different_shape_relation_marker", "allow_rotations", "allow_reflections"],
+      "solverEncoding": ["pairwise_candidate_incompatibility"],
+      "rotationsReflections": "yes_per_puzzle",
+      "shapeComparison": {
+        "allowRotations": "configurable",
+        "allowReflections": "configurable"
+      },
+      "relationModel": {
+        "kind": "two_region_relation_clue",
+        "notSimpleEdgeStateOnly": true
+      },
+      "localCandidateElimination": "partial",
+      "testPuzzleIdea": "Place a Delta marker between two domino regions and reject assignments where both are the same shape class.",
+      "sourceUrls": [
+        "https://camzillasmom.com/the-artisan-of-glimmith-window-3-watermill-puzzle-solutions/",
+        "https://camzillasmom.com/the-artisan-of-glimmith-precision-window-puzzle-solutions/"
+      ],
+      "confidence": "high",
+      "openQuestions": [
+        "Confirm whether reflections are always accepted or controlled by per-puzzle shape equivalence."
+      ]
+    },
+    {
+      "id": "polyomino",
+      "canonicalName": "Polyomino",
+      "implementationStatus": "ready",
+      "alternateNames": ["Required shape clue"],
+      "meaning": "A region containing a shape clue must have that clue's shape; early puzzles may imply monominoes without showing them.",
+      "scope": ["one_region", "clue_cells", "shapes"],
+      "visualEditorInput": ["shape_clue_cells", "allow_rotations", "allow_reflections"],
+      "solverEncoding": ["candidate_filter"],
+      "rotationsReflections": "yes_per_clue_or_puzzle",
+      "shapeComparison": {
+        "allowRotations": "configurable",
+        "allowReflections": "configurable"
+      },
+      "localCandidateElimination": "yes",
+      "testPuzzleIdea": "A region containing an L-triomino clue should reject straight-triomino candidates.",
+      "sourceUrls": [
+        "https://camzillasmom.com/the-artisan-of-glimmith-polyomino-window-puzzle-solutions/",
+        "https://camzillasmom.com/the-artisan-of-glimmith-forest-entrance-window-puzzle-solutions/"
+      ],
+      "confidence": "high",
+      "openQuestions": [
+        "Confirm behavior when multiple shape clues land in the same region."
+      ]
+    },
+    {
+      "id": "mingle_shape",
+      "canonicalName": "Mingle Shape",
+      "implementationStatus": "ready",
+      "alternateNames": ["Neighboring regions different shapes"],
+      "meaning": "Neighboring regions must have different shapes.",
+      "scope": ["two_adjacent_regions", "all_regions", "shapes"],
+      "visualEditorInput": ["global_rule_toggle", "allow_rotations", "allow_reflections"],
+      "solverEncoding": ["pairwise_candidate_incompatibility"],
+      "rotationsReflections": "yes_per_puzzle",
+      "shapeComparison": {
+        "allowRotations": "configurable",
+        "allowReflections": "configurable"
+      },
+      "localCandidateElimination": "partial",
+      "testPuzzleIdea": "Reject two edge-adjacent regions with the same tetromino while allowing non-adjacent duplicates.",
+      "sourceUrls": [
+        "https://camzillasmom.com/the-artisan-of-glimmith-mingle-shape-window-puzzle-solutions/",
+        "https://camzillasmom.com/the-artisan-of-glimmith-forest-entrance-window-puzzle-solutions/"
+      ],
+      "confidence": "high",
+      "openQuestions": [
+        "Confirm whether corner-only contact counts as neighboring."
+      ]
+    },
+    {
+      "id": "area_number",
+      "canonicalName": "Area Number",
+      "implementationStatus": "ready",
+      "alternateNames": ["Number clue", "Area clue"],
+      "meaning": "A number inside a region indicates the number of cells in that region.",
+      "scope": ["one_region", "clue_cells", "numbers"],
+      "visualEditorInput": ["number_clue_cells"],
+      "solverEncoding": ["candidate_filter"],
+      "rotationsReflections": "not_relevant",
+      "localCandidateElimination": "yes",
+      "testPuzzleIdea": "Reject candidates containing a number 4 clue unless their area is exactly 4.",
+      "sourceUrls": [
+        "https://camzillasmom.com/the-artisan-of-glimmith-area-number-window-puzzle-solutions/",
+        "https://steamcommunity.com/stats/4160210/achievements"
+      ],
+      "confidence": "high",
+      "openQuestions": [
+        "Confirm behavior for multiple area numbers inside one region."
+      ]
+    },
+    {
+      "id": "palisade",
+      "canonicalName": "Palisade",
+      "implementationStatus": "blocked",
+      "alternateNames": ["Wall-pattern clue", "Fence clue"],
+      "meaning": "A clue prescribes a local border pattern around a clue cell, with variants such as straight, corner, end, dot, or cross.",
+      "scope": ["edges_or_walls", "clue_cells", "clue_vertices"],
+      "visualEditorInput": ["palisade_clue_type", "orientation"],
+      "solverEncoding": ["blocked_until_semantics_verified"],
+      "rotationsReflections": "rotations_matter_for_oriented_clues",
+      "implementationModel": {
+        "solverBehavior": "reject_not_implemented_semantics_unverified",
+        "uiPlaceholderOnly": true
+      },
+      "localCandidateElimination": "partial",
+      "testPuzzleIdea": "Reject a partition around a cross-style clue unless all four required adjacent walls are present.",
+      "sourceUrls": [
+        "https://www.reddit.com/r/TheArtisanOfGlimmith/comments/1s0nkfi/how_was_i_supposed_to_solve_this_puzzle/",
+        "https://steamcommunity.com/app/4160210/discussions/search/?q=Palisade",
+        "https://steamdb.info/patchnotes/22658641/"
+      ],
+      "confidence": "medium",
+      "openQuestions": [
+        "Capture exact icon taxonomy and orientation rules from the in-game editor or tutorial."
+      ]
+    },
+    {
+      "id": "match",
+      "canonicalName": "Match",
+      "implementationStatus": "experimental",
+      "alternateNames": ["Uniformity", "Same shape globally"],
+      "meaning": "Regions in the puzzle, or in a marked group, must share the same shape.",
+      "scope": ["all_regions", "shapes"],
+      "visualEditorInput": ["group_rule", "allow_rotations", "allow_reflections"],
+      "solverEncoding": ["global_all_same_shape_constraint"],
+      "rotationsReflections": "yes_isometry_matters",
+      "shapeComparison": {
+        "allowRotations": "configurable",
+        "allowReflections": "configurable"
+      },
+      "groupModel": {
+        "groupField": "group",
+        "defaultGroup": "global"
+      },
+      "localCandidateElimination": "no",
+      "testPuzzleIdea": "Reject a three-region solution where two regions are L triominoes and the third is a straight triomino.",
+      "sourceUrls": [
+        "https://steamcommunity.com/app/4160210/discussions/0/796716542888872782/",
+        "https://steamcommunity.com/app/4160210/?curator_clanid=7048508",
+        "https://steamcommunity.com/stats/4160210/achievements"
+      ],
+      "confidence": "high",
+      "openQuestions": [
+        "Confirm whether Match can apply to subsets/groups or always applies to every region."
+      ]
+    },
+    {
+      "id": "mismatch",
+      "canonicalName": "Mismatch",
+      "implementationStatus": "experimental",
+      "alternateNames": ["Uniqueness", "All different shapes"],
+      "meaning": "Regions must have distinct shapes under the active shape-equivalence settings.",
+      "scope": ["all_regions", "shapes"],
+      "visualEditorInput": ["group_rule", "allow_rotations", "allow_reflections"],
+      "solverEncoding": ["global_all_different_shape_constraint"],
+      "rotationsReflections": "yes_per_puzzle",
+      "shapeComparison": {
+        "allowRotations": "configurable",
+        "allowReflections": "configurable"
+      },
+      "groupModel": {
+        "groupField": "group",
+        "defaultGroup": "global"
+      },
+      "localCandidateElimination": "no",
+      "testPuzzleIdea": "Reject a solution where two regions are the same pentomino shape.",
+      "sourceUrls": [
+        "https://steamcommunity.com/app/4160210/discussions/0/841752762653913411/",
+        "https://steamcommunity.com/app/4160210/reviews/?browsefilter=toprated",
+        "https://steamcommunity.com/stats/4160210/achievements"
+      ],
+      "confidence": "medium",
+      "openQuestions": [
+        "Confirm whether distinctness is global across all sizes or grouped by area/region class."
+      ]
+    },
+    {
+      "id": "range",
+      "canonicalName": "Range",
+      "implementationStatus": "experimental",
+      "alternateNames": ["Area range"],
+      "meaning": "Every region's area must fall within an inclusive minimum and maximum range.",
+      "scope": ["one_region", "all_regions", "numbers"],
+      "visualEditorInput": ["minimum_area", "maximum_area"],
+      "solverEncoding": ["candidate_filter"],
+      "rotationsReflections": "not_relevant",
+      "localCandidateElimination": "yes",
+      "testPuzzleIdea": "With range 2..3, reject monomino and tetromino candidates.",
+      "sourceUrls": [
+        "https://steamcommunity.com/stats/4160210/achievements",
+        "https://steamcommunity.com/app/4160210/discussions/search/?q=Range"
+      ],
+      "confidence": "medium",
+      "openQuestions": [
+        "Verify inclusivity and whether ranges are always global."
+      ]
+    },
+    {
+      "id": "solitude",
+      "canonicalName": "Solitude",
+      "implementationStatus": "experimental",
+      "alternateNames": ["Lonely Island", "One clue per region"],
+      "meaning": "Each region appears to contain exactly one clue or symbol, but exact wording still needs verification.",
+      "scope": ["symbols_inside_regions", "clue_cells"],
+      "visualEditorInput": ["counted_clue_or_symbol_cells"],
+      "solverEncoding": ["candidate_filter", "optional_exact_cover_clue_constraint"],
+      "rotationsReflections": "not_relevant",
+      "localCandidateElimination": "yes",
+      "testPuzzleIdea": "Reject a candidate region containing zero counted clues or two counted clues if the rule is exactly-one.",
+      "sourceUrls": [
+        "https://steamcommunity.com/stats/4160210/achievements",
+        "https://steamcommunity.com/app/4160210/discussions/search/?q=Solitude",
+        "https://steamcommunity.com/app/4160210/discussions/0/796715232585227442/"
+      ],
+      "confidence": "medium",
+      "openQuestions": [
+        "Verify exactly one vs at most one.",
+        "Verify whether all clue types count or only Solitude symbols."
+      ]
+    },
+    {
+      "id": "size_separation",
+      "canonicalName": "Size Separation",
+      "implementationStatus": "experimental",
+      "alternateNames": ["Different neighboring sizes"],
+      "meaning": "Neighboring regions must have different areas.",
+      "scope": ["two_adjacent_regions", "numbers"],
+      "visualEditorInput": ["global_rule_toggle"],
+      "solverEncoding": ["pairwise_candidate_incompatibility"],
+      "rotationsReflections": "not_relevant",
+      "localCandidateElimination": "partial",
+      "testPuzzleIdea": "Reject adjacent regions of areas 3 and 3 while allowing 3 and 4.",
+      "sourceUrls": [
+        "https://steamcommunity.com/stats/4160210/achievements",
+        "https://steamcommunity.com/app/4160210/discussions/search/?q=Size%20Separation"
+      ],
+      "confidence": "medium",
+      "openQuestions": [
+        "Confirm whether same-size non-adjacent regions may repeat."
+      ]
+    },
+    {
+      "id": "boxy",
+      "canonicalName": "Boxy",
+      "implementationStatus": "experimental",
+      "alternateNames": ["Rectangles"],
+      "meaning": "Regions must be rectangular boxes.",
+      "scope": ["one_region", "shapes"],
+      "visualEditorInput": ["global_rule_toggle", "optional_allowed_dimensions"],
+      "solverEncoding": ["candidate_filter"],
+      "rotationsReflections": "rectangle_dimensions_collapse_rotations",
+      "localCandidateElimination": "yes",
+      "testPuzzleIdea": "Keep a 2 by 3 rectangle candidate and reject a bent six-cell candidate.",
+      "sourceUrls": [
+        "https://steamcommunity.com/app/4160210/discussions/0/841752762653913411/",
+        "https://steamcommunity.com/stats/4160210/achievements"
+      ],
+      "confidence": "medium",
+      "openQuestions": [
+        "Verify whether 1 by N lines and monominoes count as Boxy."
+      ]
+    },
+    {
+      "id": "non_boxy",
+      "canonicalName": "Non-Boxy",
+      "implementationStatus": "experimental",
+      "alternateNames": ["Not rectangles"],
+      "meaning": "Regions must not be rectangular boxes.",
+      "scope": ["one_region", "shapes"],
+      "visualEditorInput": ["global_rule_toggle"],
+      "solverEncoding": ["candidate_filter"],
+      "rotationsReflections": "not_relevant_beyond_rectangle_detection",
+      "localCandidateElimination": "yes",
+      "testPuzzleIdea": "Reject a 2 by 2 square and allow an L-tetromino.",
+      "sourceUrls": [
+        "https://steamcommunity.com/stats/4160210/achievements",
+        "https://gamefaqs.gamespot.com/pc/607835-the-artisan-of-glimmith/achievements"
+      ],
+      "confidence": "medium",
+      "openQuestions": [
+        "Verify exact rectangle definition and monomino behavior."
+      ]
+    },
+    {
+      "id": "bricky",
+      "canonicalName": "Bricky",
+      "implementationStatus": "blocked",
+      "alternateNames": ["No four-way corners", "No corner touching"],
+      "meaning": "Region borders may not create a four-line meeting at a grid vertex; sources also describe this as regions not cornering one another.",
+      "scope": ["edges_or_walls", "clue_vertices", "all_regions"],
+      "visualEditorInput": ["global_rule_toggle"],
+      "solverEncoding": ["blocked_until_semantics_verified"],
+      "rotationsReflections": "not_relevant",
+      "implementationModel": {
+        "solverBehavior": "reject_not_implemented_semantics_unverified",
+        "uiPlaceholderOnly": true
+      },
+      "localCandidateElimination": "partial",
+      "testPuzzleIdea": "Reject four regions meeting around one interior vertex.",
+      "sourceUrls": [
+        "https://steamcommunity.com/app/4160210/discussions/0/796716542888934780/",
+        "https://steamcommunity.com/app/4160210?l=hungarian",
+        "https://steamdb.info/patchnotes/22541095/"
+      ],
+      "confidence": "medium",
+      "openQuestions": [
+        "Confirm if the rule is exactly no degree-4 boundary vertex or a broader no-corner-touching rule."
+      ]
+    },
+    {
+      "id": "loopy",
+      "canonicalName": "Loopy",
+      "implementationStatus": "blocked",
+      "alternateNames": ["No T-junctions", "Loops"],
+      "meaning": "Region borders may not create a three-line meeting at a grid vertex, making boundaries loop-like rather than branching.",
+      "scope": ["edges_or_walls", "clue_vertices", "all_regions"],
+      "visualEditorInput": ["global_rule_toggle"],
+      "solverEncoding": ["blocked_until_semantics_verified"],
+      "rotationsReflections": "not_relevant",
+      "implementationModel": {
+        "solverBehavior": "reject_not_implemented_semantics_unverified",
+        "uiPlaceholderOnly": true
+      },
+      "localCandidateElimination": "partial",
+      "testPuzzleIdea": "Reject a partition with a T-junction boundary vertex.",
+      "sourceUrls": [
+        "https://steamcommunity.com/app/4160210/discussions/0/796716542888934780/",
+        "https://steamdb.info/patchnotes/22541095/",
+        "https://steamcommunity.com/app/4160210?l=indonesian"
+      ],
+      "confidence": "medium",
+      "openQuestions": [
+        "Confirm whether degree-1 endpoints are also restricted.",
+        "Confirm whether outer border edges count.",
+        "Confirm interaction with Bricky."
+      ]
+    },
+    {
+      "id": "inequality",
+      "canonicalName": "Inequality",
+      "implementationStatus": "experimental",
+      "alternateNames": ["Greater-than clue", "Scales"],
+      "meaning": "An oriented inequality clue between adjacent regions orders their areas; the narrow tip indicates the smaller side.",
+      "scope": ["two_adjacent_regions", "numbers", "clue_edges_or_vertices"],
+      "visualEditorInput": ["oriented_inequality_marker"],
+      "solverEncoding": ["pairwise_candidate_incompatibility"],
+      "rotationsReflections": "not_relevant",
+      "relationModel": {
+        "kind": "two_region_relation_clue",
+        "notSimpleEdgeStateOnly": true
+      },
+      "localCandidateElimination": "partial",
+      "testPuzzleIdea": "Reject a `>` assignment where the left region area is less than or equal to the right region area.",
+      "sourceUrls": [
+        "https://steamcommunity.com/stats/4160210/achievements",
+        "https://steamcommunity.com/app/4160210/discussions/search/?q=Inequality"
+      ],
+      "confidence": "medium",
+      "openQuestions": [
+        "Verify exact editor icon orientation.",
+        "Verify whether equality has any separate clue."
+      ]
+    },
+    {
+      "id": "difference",
+      "canonicalName": "Difference",
+      "implementationStatus": "ready",
+      "alternateNames": ["Area difference"],
+      "meaning": "A numeric clue between adjacent regions gives the absolute difference between their areas; zero means same area, not necessarily same shape.",
+      "scope": ["two_adjacent_regions", "numbers", "clue_edges_or_vertices"],
+      "visualEditorInput": ["difference_marker", "integer_difference"],
+      "solverEncoding": ["pairwise_candidate_incompatibility"],
+      "rotationsReflections": "not_relevant",
+      "relationModel": {
+        "kind": "two_region_relation_clue",
+        "notSimpleEdgeStateOnly": true
+      },
+      "localCandidateElimination": "partial",
+      "testPuzzleIdea": "With difference 2, allow adjacent areas 3 and 5 and reject 3 and 4.",
+      "sourceUrls": [
+        "https://steamcommunity.com/app/4160210/discussions/0/840628131190565348/",
+        "https://steamcommunity.com/stats/4160210/achievements"
+      ],
+      "confidence": "high",
+      "openQuestions": [
+        "Confirm whether the clue can appear on non-edge contacts."
+      ]
+    },
+    {
+      "id": "watchtower",
+      "canonicalName": "Watchtower",
+      "implementationStatus": "blocked",
+      "alternateNames": ["Keeping Watch"],
+      "meaning": "Confirmed as a window/rule name, but exact mechanics were not found in text sources. It may be a clue-cell visibility or path/flow mechanic.",
+      "scope": ["unknown"],
+      "visualEditorInput": ["unknown"],
+      "solverEncoding": ["blocked_until_semantics_verified"],
+      "rotationsReflections": "unknown",
+      "implementationModel": {
+        "solverBehavior": "reject_not_implemented_semantics_unverified",
+        "uiPlaceholderOnly": true
+      },
+      "localCandidateElimination": "unknown",
+      "testPuzzleIdea": "Deferred until rule text is captured; likely use a small clue-cell visibility board.",
+      "sourceUrls": [
+        "https://steamcommunity.com/stats/4160210/achievements",
+        "https://www.reddit.com/r/TheArtisanOfGlimmith/comments/1sm7y2o/loved_this_puzzle_watchtower_rose_windows/"
+      ],
+      "confidence": "low",
+      "openQuestions": [
+        "Determine exact clue meaning.",
+        "Determine whether it counts cells, regions, symbols, or sight lines.",
+        "Determine whether directions are orthogonal only."
+      ]
+    },
+    {
+      "id": "compass",
+      "canonicalName": "Compass",
+      "implementationStatus": "blocked",
+      "alternateNames": ["Pointing the Way", "Compass clue"],
+      "meaning": "A compass clue appears to count cells of its own region in the eight directional sectors around the clue.",
+      "scope": ["clue_cells", "numbers", "directions"],
+      "visualEditorInput": ["compass_directional_numbers"],
+      "solverEncoding": ["blocked_until_semantics_verified"],
+      "rotationsReflections": "absolute_directions_matter",
+      "implementationModel": {
+        "solverBehavior": "reject_not_implemented_semantics_unverified",
+        "uiPlaceholderOnly": true
+      },
+      "localCandidateElimination": "yes",
+      "testPuzzleIdea": "With an east count of 2, accept only candidates with exactly two region cells in the clue's east sector.",
+      "sourceUrls": [
+        "https://steamcommunity.com/app/4160210/discussions/search/?q=Compass",
+        "https://steamcommunity.com/app/4160210/discussions/0/796715232585227442/",
+        "https://steamdb.info/patchnotes/22658641/"
+      ],
+      "confidence": "medium",
+      "openQuestions": [
+        "Verify sector boundaries.",
+        "Verify whether the clue cell itself counts.",
+        "Verify how blank directions are represented."
+      ]
+    }
+  ],
+  "nonRuleNames": [
+    {
+      "name": "Forest Entrance",
+      "reason": "Area/progression name from achievements and guides, not a distinct rule mechanic."
+    },
+    {
+      "name": "Castle Entrance",
+      "reason": "Area/progression name from achievements and guides, not a distinct rule mechanic."
+    },
+    {
+      "name": "Market",
+      "reason": "Area/progression name from achievements and guides, not a distinct rule mechanic."
+    },
+    {
+      "name": "Town",
+      "reason": "Area/progression name from achievements and guides, not a distinct rule mechanic."
+    },
+    {
+      "name": "Forest",
+      "reason": "Area/progression name from achievements and guides, not a distinct rule mechanic."
+    },
+    {
+      "name": "Hedge Maze",
+      "reason": "Confirmed as a window name, but sources did not establish a separate rule beyond nearby advanced mechanics."
+    },
+    {
+      "name": "Spiral Island",
+      "reason": "Confirmed as a window or area name, with no separate mechanic found in text sources."
+    },
+    {
+      "name": "Secret Garden",
+      "reason": "Appears to be a location or puzzle area label."
+    },
+    {
+      "name": "Secluded Garden",
+      "reason": "Appears to be a location or puzzle area label."
+    }
+  ]
+}
