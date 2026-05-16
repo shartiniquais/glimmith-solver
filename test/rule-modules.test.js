@@ -143,7 +143,28 @@ test("Mingle Shape allows non-adjacent duplicate shapes", () => {
   assert.equal(model.invalidPairs.size, 0);
 });
 
-test("Mingle Shape shape comparison respects reflection setting", () => {
+test("Mingle Shape rule-specific reflection setting overrides global shape comparison", () => {
+  const puzzle = normalizePuzzle({
+    width: 6,
+    height: 2,
+    rules: {
+      mingle_shape: { allowReflections: true },
+      shapeEquivalenceAllowReflections: false
+    }
+  });
+  const candidates = [
+    { ...candidate([1, 2, 6, 7], 6), id: 0 },
+    { ...candidate([3, 4, 10, 11], 6), id: 1 }
+  ];
+  const context = createRuleContext(puzzle, { candidates });
+  const model = createConstraintModel();
+
+  mingleShapeRule.addConstraints(model, context);
+
+  assert.equal(model.invalidPairs.get(0)?.has(1), true);
+});
+
+test("Mingle Shape falls back to global reflection setting without override", () => {
   const puzzle = normalizePuzzle({
     width: 6,
     height: 2,

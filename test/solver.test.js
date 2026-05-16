@@ -206,12 +206,22 @@ test("Mingle Shape allows non-adjacent duplicate shapes", () => {
 });
 
 test("Mingle Shape respects reflection equivalence", () => {
-  const puzzle = createPuzzle(4, 2);
-  puzzle.rules.area = 3;
-  puzzle.rules.mingle_shape = {};
-  puzzle.rules.shapeEquivalenceAllowReflections = true;
-  puzzle.active = [true, true, true, false, true, true, false, false];
-  puzzle.activeCells = [0, 1, 2, 4, 5];
+  let puzzle = createPuzzle(6, 2);
+  puzzle.rules.area = 4;
+  puzzle.rules.mingle_shape = { allowReflections: true };
+  puzzle.rules.shapeEquivalenceAllowReflections = false;
+  puzzle.active = [
+    false, true, true, true, true, false,
+    true, true, false, false, true, true
+  ];
+  puzzle.activeCells = [1, 2, 3, 4, 6, 7, 10, 11];
+  puzzle = setEdgeState(puzzle, 1, 2, "join");
+  puzzle = setEdgeState(puzzle, 1, 7, "join");
+  puzzle = setEdgeState(puzzle, 6, 7, "join");
+  puzzle = setEdgeState(puzzle, 3, 4, "join");
+  puzzle = setEdgeState(puzzle, 4, 10, "join");
+  puzzle = setEdgeState(puzzle, 10, 11, "join");
+  puzzle = setEdgeState(puzzle, 2, 3, "cut");
 
   const result = solvePuzzle(puzzle, { limit: 2 });
   assert.equal(result.status, "no_solution");

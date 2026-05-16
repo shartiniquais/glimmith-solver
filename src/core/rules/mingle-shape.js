@@ -18,13 +18,17 @@ export const mingleShapeRule = {
 
   addConstraints(model, context) {
     const candidates = context.candidates ?? [];
+    const shapeOptions = mingleShapeOptions(context);
     for (let i = 0; i < candidates.length; i += 1) {
       for (let j = i + 1; j < candidates.length; j += 1) {
         const left = candidates[i];
         const right = candidates[j];
         if ((left.mask & right.mask) !== 0n) continue;
         if (!areOrthogonallyAdjacent(left, right, context.puzzle)) continue;
-        if (candidateShapeForComparison(context.puzzle, left) === candidateShapeForComparison(context.puzzle, right)) {
+        if (
+          candidateShapeForComparison(context.puzzle, left, shapeOptions) ===
+          candidateShapeForComparison(context.puzzle, right, shapeOptions)
+        ) {
           model.addInvalidPair(left.id, right.id);
         }
       }
@@ -32,10 +36,18 @@ export const mingleShapeRule = {
   },
 
   explainElimination(candidate, context) {
-    const shape = candidateShapeForComparison(context.puzzle, candidate);
+    const shape = candidateShapeForComparison(context.puzzle, candidate, mingleShapeOptions(context));
     return `Mingle Shape rejects orthogonally adjacent regions with matching shape ${shape}.`;
   }
 };
+
+function mingleShapeOptions(context) {
+  const config = context.ruleConfigs.mingle_shape;
+  return {
+    allowRotations: config?.allowRotations,
+    allowReflections: config?.allowReflections
+  };
+}
 
 function areOrthogonallyAdjacent(left, right, puzzle) {
   const rightCells = new Set(right.cells);
@@ -46,4 +58,3 @@ function areOrthogonallyAdjacent(left, right, puzzle) {
   }
   return false;
 }
-
