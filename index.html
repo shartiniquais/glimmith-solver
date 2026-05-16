@@ -35,8 +35,31 @@
           <button class="tool" data-tool="relation" type="button">Relation pair clue</button>
           <button class="tool" data-tool="areaNumber" type="button">Area number clue</button>
           <button class="tool" data-tool="polyomino" type="button">Polyomino clue</button>
+          <button class="tool" data-tool="eraseClue" type="button">Erase clue</button>
         </div>
         <p class="hint">Border cycle: unknown → cut → join → Gemini/same-shape → Delta/different-shape.</p>
+
+        <div class="tool-help">
+          <h3>Tool Legend</h3>
+          <dl>
+            <dt>Active / hole cells</dt>
+            <dd>Toggle whether a cell belongs to the puzzle mask.</dd>
+            <dt>Cycle symbols</dt>
+            <dd>Cycle cell symbols used by Rose Windows.</dd>
+            <dt>Cycle borders</dt>
+            <dd>Cycle cut, join, Gemini, and Delta edge marks.</dd>
+            <dt>Relation pair clue</dt>
+            <dd>Click two active cells to add Gemini, Delta, or Difference relation clues.</dd>
+            <dt>Area number clue</dt>
+            <dd>Place a numeric region-area clue on an active cell.</dd>
+            <dt>Polyomino clue</dt>
+            <dd>Place the drawn polyomino shape clue on an active cell.</dd>
+            <dt>Erase clue</dt>
+            <dd>Remove Area Number, Polyomino, or relation clues without changing edge cut/join constraints.</dd>
+            <dt>Screenshot tracing</dt>
+            <dd>Load a background image and adjust it while tracing cells and clues manually.</dd>
+          </dl>
+        </div>
 
         <h2>Rule Palette</h2>
         <div id="rulePalette" class="rule-palette" aria-label="Rule palette"></div>

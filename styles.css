@@ -105,6 +105,31 @@ textarea {
   grid-template-columns: 1fr;
   gap: 0.4rem;
 }
+.tool-help {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fffdf9;
+  margin: 0.65rem 0;
+  padding: 0.65rem;
+}
+.tool-help h3 {
+  font-size: 0.95rem;
+  margin: 0 0 0.45rem;
+}
+.tool-help dl {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+}
+.tool-help dt {
+  font-weight: 700;
+}
+.tool-help dd {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.32;
+  margin: -0.25rem 0 0.25rem;
+}
 .rule-palette {
   display: grid;
   gap: 0.5rem;
@@ -228,7 +253,8 @@ textarea {
   dominant-baseline: middle;
 }
 .cell-clue {
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
   text-anchor: middle;
   dominant-baseline: middle;
   font-size: 11px;
@@ -236,7 +262,8 @@ textarea {
   fill: #fff;
 }
 .cell-clue-bg {
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
   fill: var(--accent-strong);
   stroke: #fff;
   stroke-width: 1.5;
@@ -245,14 +272,16 @@ textarea {
   fill: #255f6f;
 }
 .relation-clue-line {
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
   stroke: #5d5147;
   stroke-width: 3;
   stroke-dasharray: 5 5;
   opacity: 0.8;
 }
 .relation-clue-label {
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
   text-anchor: middle;
   dominant-baseline: middle;
   font-size: 12px;

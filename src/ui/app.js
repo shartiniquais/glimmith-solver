@@ -13,36 +13,12 @@ import { solvePuzzle } from "../core/solver.js";
 import { findNextLogicalStep, summarizeSolution } from "../core/explain.js";
 import { validatePuzzle } from "../core/validation.js";
 import { RULE_REGISTRY } from "../core/rules/registry.js";
+import { RULE_HELP } from "./rule-ui-metadata.js";
 
 const CELL = 46;
 const SVG_PAD = 10;
 const MINI_GRID_SIZE = 5;
 const DEFAULT_BANK_SHAPE = "O4: 0,0 1,0 0,1 1,1";
-
-const RULE_HELP = {
-  precision: "Every region must have exactly this many cells.",
-  shape_bank: "Every region must match one of the allowed drawn shapes.",
-  rose_window: "Every region must contain the required symbol counts.",
-  gemini: "A relation clue requiring two referenced regions to have the same shape.",
-  delta: "A relation clue requiring two referenced regions to have different shapes.",
-  difference: "A relation clue requiring two referenced regions to differ by a fixed area.",
-  area_number: "A cell clue forcing its region to have the shown area.",
-  polyomino: "A cell clue forcing its region to match a drawn polyomino.",
-  mingle_shape: "Adjacent selected regions cannot have the same shape.",
-  match: "Experimental rule with unresolved edge cases.",
-  mismatch: "Experimental rule with unresolved edge cases.",
-  range: "Experimental rule with unresolved edge cases.",
-  size_separation: "Experimental rule with unresolved edge cases.",
-  boxy: "Experimental rule with unresolved edge cases.",
-  non_boxy: "Experimental rule with unresolved edge cases.",
-  inequality: "Experimental relation rule with unresolved edge cases.",
-  solitude: "Experimental rule with unresolved edge cases.",
-  palisade: "Blocked until exact semantics are verified.",
-  bricky: "Blocked until exact semantics are verified.",
-  loopy: "Blocked until exact semantics are verified.",
-  compass: "Blocked until exact semantics are verified.",
-  watchtower: "Blocked until exact semantics are verified."
-};
 
 let puzzle = createPuzzle(6, 6);
 let currentTool = "cell";
@@ -224,8 +200,16 @@ function bindEvents() {
   });
 
   el.boardSvg.addEventListener("click", (event) => {
+    const clueId = event.target.dataset.clueId;
     const edge = event.target.dataset.edge;
     const cell = event.target.dataset.cell;
+    if (clueId && currentTool === "eraseClue") {
+      puzzle = removeClueById(clueId);
+      clearComputed();
+      renderStatus("Clue removed.", "good");
+      render();
+      return;
+    }
     if (edge && currentTool === "edge") {
       const [a, b] = parseEdgeKey(edge);
       puzzle = cycleEdgeConstraint(puzzle, a, b);
@@ -351,6 +335,19 @@ function handleCellClick(cell) {
 
   if (currentTool === "relation") {
     handleRelationCellClick(cell);
+    return;
+  }
+
+  if (currentTool === "eraseClue") {
+    const clue = (cellCluesByCell().get(cell) ?? []).find((item) => item.ruleId === "area_number" || item.ruleId === "polyomino");
+    if (!clue) {
+      renderStatus(`No removable clue on ${cellLabel(cell, puzzle.width)}.`, "warn");
+      return;
+    }
+    puzzle = removeClueById(clue.id);
+    clearComputed();
+    renderStatus("Clue removed.", "good");
+    render();
   }
 }
 
@@ -585,14 +582,28 @@ function renderMiniGrid(container, selectedCells) {
 function renderValidation() {
   const validation = validatePuzzle(puzzle);
   const messages = [];
+  const validationErrors = validation.errors.filter((error) => {
+    return (
+      error !== 'Rule "area_number" requires at least one area number clue.' &&
+      error !== 'Rule "polyomino" requires at least one polyomino clue.'
+    );
+  });
   if (puzzle.activeCells.length === 0) messages.push("Add at least one active cell.");
-  if (!hasCandidateSource()) {
+  if (Number(puzzle.rules.area) <= 0 && !hasCandidateSource()) {
+    messages.push("Precision needs a positive area.");
+  } else if (!hasCandidateSource()) {
     messages.push("Add Precision area, Shape Bank shapes, Area Number clues, or Polyomino clues so the solver can generate candidates.");
   }
   if (puzzle.rules.shape_bank && !puzzle.shapeBank?.text?.trim() && (puzzle.shapeBank?.entries ?? []).length === 0) {
-    messages.push("Shape Bank is enabled but has no shapes.");
+    messages.push("Draw or paste at least one shape.");
   }
-  messages.push(...validation.errors);
+  if (puzzle.rules.area_number && !hasRuleClue("area_number")) {
+    messages.push("Place at least one Area Number clue.");
+  }
+  if (puzzle.rules.polyomino && !hasRuleClue("polyomino")) {
+    messages.push("Place at least one Polyomino clue.");
+  }
+  messages.push(...validationErrors);
 
   if (messages.length === 0) {
     el.validationBox.textContent = "No validation issues.";
@@ -601,7 +612,7 @@ function renderValidation() {
   }
 
   el.validationBox.textContent = messages.map((message) => `- ${message}`).join("\n");
-  el.validationBox.className = `validation-box ${validation.errors.length ? "bad" : "warn"}`;
+  el.validationBox.className = `validation-box ${validationErrors.length ? "bad" : "warn"}`;
 }
 
 function renderBoard() {
@@ -688,13 +699,13 @@ function cellClueSvg(clues, rx, ry) {
   const areaClue = clues.find((clue) => clue.ruleId === "area_number");
   if (areaClue) {
     const value = areaClue.value ?? areaClue.params?.value ?? areaClue.params?.area;
-    html += `<circle class="cell-clue-bg" cx="${rx + 12}" cy="${ry + 12}" r="10"></circle>`;
-    html += `<text class="cell-clue" x="${rx + 12}" y="${ry + 12}">${escapeHtml(value)}</text>`;
+    html += `<circle class="cell-clue-bg" data-clue-id="${escapeHtml(areaClue.id)}" data-cell="${areaClue.location.cell}" cx="${rx + 12}" cy="${ry + 12}" r="10"><title>Area Number clue ${escapeHtml(value)}</title></circle>`;
+    html += `<text class="cell-clue" data-clue-id="${escapeHtml(areaClue.id)}" data-cell="${areaClue.location.cell}" x="${rx + 12}" y="${ry + 12}">${escapeHtml(value)}</text>`;
   }
   const polyClue = clues.find((clue) => clue.ruleId === "polyomino");
   if (polyClue) {
-    html += `<circle class="cell-clue-bg poly-clue-bg" cx="${rx + CELL - 12}" cy="${ry + 12}" r="10"></circle>`;
-    html += `<text class="cell-clue" x="${rx + CELL - 12}" y="${ry + 12}">P</text>`;
+    html += `<circle class="cell-clue-bg poly-clue-bg" data-clue-id="${escapeHtml(polyClue.id)}" data-cell="${polyClue.location.cell}" cx="${rx + CELL - 12}" cy="${ry + 12}" r="10"><title>Polyomino clue</title></circle>`;
+    html += `<text class="cell-clue" data-clue-id="${escapeHtml(polyClue.id)}" data-cell="${polyClue.location.cell}" x="${rx + CELL - 12}" y="${ry + 12}">P</text>`;
   }
   return html;
 }
@@ -709,8 +720,8 @@ function relationCluesSvg() {
     const right = cellCenter(cells[1]);
     const mx = (left.x + right.x) / 2;
     const my = (left.y + right.y) / 2;
-    html += `<line class="relation-clue-line" x1="${left.x}" y1="${left.y}" x2="${right.x}" y2="${right.y}"></line>`;
-    html += `<text class="relation-clue-label" x="${mx}" y="${my}">${escapeHtml(relationClueLabel(clue))}</text>`;
+    html += `<line class="relation-clue-line" data-clue-id="${escapeHtml(clue.id)}" x1="${left.x}" y1="${left.y}" x2="${right.x}" y2="${right.y}"><title>${escapeHtml(ruleLabel(clue.ruleId))} relation clue</title></line>`;
+    html += `<text class="relation-clue-label" data-clue-id="${escapeHtml(clue.id)}" x="${mx}" y="${my}">${escapeHtml(relationClueLabel(clue))}</text>`;
   }
   return html;
 }
@@ -759,6 +770,11 @@ function upsertRelationClue(ruleId, firstCell, secondCell) {
   const clues = (puzzle.clues ?? []).filter((existing) => existing.id !== clue.id);
   clues.push(clue);
   return normalizePuzzle({ ...puzzle, rules, clues });
+}
+
+function removeClueById(clueId) {
+  const clues = (puzzle.clues ?? []).filter((clue) => clue.id !== clueId);
+  return normalizePuzzle({ ...puzzle, clues });
 }
 
 function cellCluesByCell() {
@@ -888,6 +904,10 @@ function hasCandidateSource() {
     (puzzle.shapeBank?.entries ?? []).length > 0 ||
     (puzzle.clues ?? []).some((clue) => clue.ruleId === "area_number" || clue.ruleId === "polyomino")
   );
+}
+
+function hasRuleClue(ruleId) {
+  return (puzzle.clues ?? []).some((clue) => clue.ruleId === ruleId);
 }
 
 function isRuleActive(id) {
