@@ -45,7 +45,7 @@ export const IMPLEMENTED_RULE_VISUALS = Object.freeze({
   bricky: { type: "paletteToggle", target: "rulePalette" },
   loopy: { type: "paletteToggle", target: "rulePalette" },
   compass: { type: "placementTool", target: "compass" },
-  watchtower: { type: "paletteToggle", target: "rulePalette" }
+  watchtower: { type: "placementTool", target: "watchtower" }
 });
 
 export const RULE_GROUPS = Object.freeze([

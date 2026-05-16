@@ -9,10 +9,13 @@ import {
   toggleCellActive
 } from "../core/puzzle.js";
 import { solvePuzzle } from "../core/solver.js";
+import { allVertexBorderDegrees, selectedBorderSegments } from "../core/boundary.js";
+import { generateCandidateDiagnostics } from "../core/candidates.js";
 import {
   applyLogicalStep,
   describeCandidatesForCell,
   explainAllLogicalSteps,
+  explainCandidateViolations,
   findNextLogicalStep,
   formatExplanationTrace,
   isStepApplyable,
@@ -31,6 +34,8 @@ import {
 } from "./shape-bank-ui.js";
 import { inspectorStateForSelection } from "./inspector-state.js";
 import { hasUiCandidateSource } from "./candidate-source.js";
+import { parseVertexKey, vertexKey } from "./board-hit-testing.js";
+import { EXAMPLES, exampleById } from "./examples.js";
 
 const CELL = 46;
 const SVG_PAD = 10;
@@ -74,6 +79,7 @@ const el = {
   differenceValueInput: document.getElementById("differenceValueInput"),
   inequalityDirectionInput: document.getElementById("inequalityDirectionInput"),
   relationPickHint: document.getElementById("relationPickHint"),
+  watchtowerValueInput: document.getElementById("watchtowerValueInput"),
   palisadePatternInput: document.getElementById("palisadePatternInput"),
   compassNInput: document.getElementById("compassNInput"),
   compassEInput: document.getElementById("compassEInput"),
@@ -105,12 +111,16 @@ const el = {
   exportTraceButton: document.getElementById("exportTraceButton"),
   copyTraceButton: document.getElementById("copyTraceButton"),
   clearSolutionButton: document.getElementById("clearSolutionButton"),
+  boundaryGraphToggle: document.getElementById("boundaryGraphToggle"),
   exportJsonButton: document.getElementById("exportJsonButton"),
   importJsonButton: document.getElementById("importJsonButton"),
+  exampleSelect: document.getElementById("exampleSelect"),
+  loadExampleButton: document.getElementById("loadExampleButton"),
   jsonBox: document.getElementById("jsonBox"),
   validationBox: document.getElementById("validationBox"),
   statusBox: document.getElementById("statusBox"),
   solutionText: document.getElementById("solutionText"),
+  noSolutionBox: document.getElementById("noSolutionBox"),
   themeToggle: document.getElementById("themeToggle"),
   currentToolName: document.getElementById("currentToolName"),
   currentToolDescription: document.getElementById("currentToolDescription"),
@@ -120,6 +130,7 @@ const el = {
 };
 
 setupTheme();
+renderExampleOptions();
 bindEvents();
 syncFormFromPuzzle();
 render();
@@ -129,6 +140,20 @@ function bindEvents() {
     if (event.target.name !== "themePreference") return;
     const preference = saveThemePreference(event.target.value);
     applyThemePreference(preference);
+  });
+
+  el.loadExampleButton.addEventListener("click", () => {
+    const example = exampleById(el.exampleSelect.value);
+    if (!example) return;
+    puzzle = normalizePuzzle(example.puzzle);
+    selectedCell = null;
+    selectedClueId = null;
+    relationFirstCell = null;
+    explanationTrace = [];
+    clearComputed();
+    syncFormFromPuzzle();
+    renderStatus(`Loaded example: ${example.label}.`, "good");
+    render();
   });
 
   document.querySelectorAll(".tool").forEach((button) => {
@@ -239,6 +264,12 @@ function bindEvents() {
       clearComputed();
       render();
     }
+    if (target.dataset.watchtowerValue !== undefined) {
+      const value = clamp(Number(target.value) || 1, 1, 4);
+      puzzle = updateClueById(clueId, (clue) => ({ ...clue, value }));
+      clearComputed();
+      render();
+    }
   });
 
   el.relationRuleInput.addEventListener("change", () => {
@@ -246,6 +277,9 @@ function bindEvents() {
     updateRelationHint();
     render();
   });
+  for (const input of [el.differenceValueInput, el.inequalityDirectionInput, el.watchtowerValueInput]) {
+    input.addEventListener("change", () => renderToolBanner());
+  }
 
   el.polyominoClueGrid.addEventListener("click", (event) => {
     toggleDraftCell(polyominoDraftCells, event.target.dataset.miniCell);
@@ -306,6 +340,8 @@ function bindEvents() {
     render();
   });
 
+  el.boundaryGraphToggle.addEventListener("change", () => render());
+
   el.tetrominoButton.addEventListener("click", () => {
     puzzle.rules.shapeBankText = TETROMINO_PRESET;
     clearComputed();
@@ -317,6 +353,7 @@ function bindEvents() {
   el.boardSvg.addEventListener("click", (event) => {
     const clueId = event.target.dataset.clueId;
     const edge = event.target.dataset.edge;
+    const vertex = event.target.dataset.vertex;
     const cell = event.target.dataset.cell;
     if (clueId && currentTool === "eraseClue") {
       puzzle = removeClueById(clueId);
@@ -332,10 +369,31 @@ function bindEvents() {
       render();
       return;
     }
+    if (vertex && currentTool === "watchtower") {
+      const parsed = parseVertexKey(vertex);
+      if (!parsed) return;
+      const value = clamp(Number(el.watchtowerValueInput.value) || 1, 1, 4);
+      puzzle = upsertVertexClue("watchtower", parsed, { value });
+      selectedClueId = `watchtower:${parsed.x}:${parsed.y}`;
+      clearComputed();
+      renderStatus(`Watchtower ${value} placed at vertex (${parsed.x}, ${parsed.y}).`, "good");
+      render();
+      return;
+    }
     if (edge && currentTool === "edge") {
       const [a, b] = parseEdgeKey(edge);
       puzzle = cycleEdgeConstraint(puzzle, a, b);
       clearComputed();
+      render();
+      return;
+    }
+    if (edge && currentTool === "relation") {
+      const [a, b] = parseEdgeKey(edge);
+      const ruleId = el.relationRuleInput.value;
+      puzzle = upsertRelationClue(ruleId, a, b);
+      clearComputed();
+      relationFirstCell = null;
+      renderStatus(`${ruleLabel(ruleId)} relation clue placed on an edge.`, "good");
       render();
       return;
     }
@@ -458,6 +516,12 @@ function setupTheme() {
     const checked = el.themeToggle.querySelector('input[name="themePreference"]:checked');
     if ((checked?.value ?? "system") === "system") applyThemePreference("system");
   });
+}
+
+function renderExampleOptions() {
+  el.exampleSelect.innerHTML = EXAMPLES.map(
+    (example) => `<option value="${escapeHtml(example.id)}">${escapeHtml(example.label)}</option>`
+  ).join("");
 }
 
 function handleCellClick(cell) {
@@ -672,6 +736,7 @@ function enableRule(id) {
   }
   if (id === "watchtower") {
     puzzle.rules.watchtower = puzzle.rules.watchtower ?? {};
+    setCurrentTool("watchtower");
     return;
   }
   if (id === "gemini" || id === "delta" || id === "difference") {
@@ -740,6 +805,10 @@ function clearComputed() {
   currentSolution = null;
   lastStep = null;
   lastCandidateSummary = null;
+  if (el.noSolutionBox) {
+    el.noSolutionBox.hidden = true;
+    el.noSolutionBox.innerHTML = "";
+  }
   el.applyStepButton.disabled = true;
 }
 
@@ -781,7 +850,7 @@ function toolInfo(tool) {
     },
     relation: {
       name: "Relation pair clue",
-      description: "Click two edge-adjacent active cells to add a relation clue between their eventual regions.",
+      description: "Click an edge, or click two edge-adjacent active cells, to add a relation clue between their eventual regions.",
       params: `${ruleLabel(el.relationRuleInput.value)}${relationToolParameterText()}. Delete relation clues with Erase clue or the inspector.`
     },
     areaNumber: {
@@ -804,9 +873,14 @@ function toolInfo(tool) {
       description: "Click an active cell to place directional own-region count restrictions.",
       params: compassToolParameterText()
     },
+    watchtower: {
+      name: "Watchtower clue",
+      description: "Click a grid vertex to place a clue counting distinct regions touching that vertex.",
+      params: `Value ${clamp(Number(el.watchtowerValueInput.value) || 1, 1, 4)}. Edit or remove selected Watchtower clues in the inspector.`
+    },
     eraseClue: {
       name: "Erase clue",
-      description: "Click an Area Number, Polyomino, or relation clue to remove it.",
+      description: "Click an Area Number, Polyomino, Palisade, Compass, Watchtower, or relation clue to remove it.",
       params: "Cut and join edge constraints stay controlled by the Cycle borders tool."
     }
   };
@@ -889,7 +963,7 @@ function ruleControlsHtml(id, active, disabled) {
     return `<div class="rule-controls"><button type="button" data-select-tool="compass" data-status="Compass placement tool selected.">Place Compass clues</button></div>`;
   }
   if (id === "watchtower" && active) {
-    return `<div class="rule-controls"><p>Watchtower vertex clues are supported through JSON import/export.</p></div>`;
+    return `<div class="rule-controls"><button type="button" data-select-tool="watchtower" data-status="Watchtower vertex placement tool selected.">Place Watchtower clues</button></div>`;
   }
   if ((id === "bricky" || id === "loopy") && active) {
     return `<div class="rule-controls"><p>Global boundary-vertex rule. No placement tool needed.</p></div>`;
@@ -1054,6 +1128,10 @@ function renderInspector() {
     el.inspectorBox.innerHTML = relationInspectorHtml(state);
     return;
   }
+  if (state.type === "vertex_clue") {
+    el.inspectorBox.innerHTML = vertexClueInspectorHtml(state);
+    return;
+  }
   if (state.type === "cell_clue") {
     el.inspectorBox.innerHTML = cellClueInspectorHtml(state.clue, state.label);
   }
@@ -1163,6 +1241,31 @@ function relationInspectorHtml(state) {
   </div>`;
 }
 
+function vertexClueInspectorHtml(state) {
+  if (state.ruleId === "watchtower") {
+    return `<div class="inspector-stack">
+      <section class="inspector-card">
+        <h3>Watchtower</h3>
+        <dl class="compact-list">
+          <dt>Vertex</dt><dd>${escapeHtml(state.label)}</dd>
+          <dt>Rule type</dt><dd>watchtower</dd>
+        </dl>
+        <label class="stacked">Value
+          <input type="number" min="1" max="4" value="${clamp(state.value, 1, 4)}" data-clue-id="${escapeHtml(state.clue.id)}" data-watchtower-value />
+        </label>
+        <button type="button" data-delete-clue-id="${escapeHtml(state.clue.id)}">Delete Watchtower clue</button>
+      </section>
+    </div>`;
+  }
+  return `<div class="inspector-stack">
+    <section class="inspector-card">
+      <h3>${escapeHtml(ruleLabel(state.ruleId))}</h3>
+      <p>${escapeHtml(state.label)} vertex clue.</p>
+      <button type="button" data-delete-clue-id="${escapeHtml(state.clue.id)}">Remove clue</button>
+    </section>
+  </div>`;
+}
+
 function renderBoard() {
   const widthPx = puzzle.width * CELL + SVG_PAD * 2;
   const heightPx = puzzle.height * CELL + SVG_PAD * 2;
@@ -1203,6 +1306,7 @@ function renderBoard() {
   }
 
   html += relationCluesSvg();
+  html += boundaryGraphOverlaySvg();
 
   for (const [a, b] of activeAdjacencyEdges(puzzle)) {
     const key = edgeKey(a, b);
@@ -1224,6 +1328,9 @@ function renderBoard() {
     }
     html += `<line class="edge-hit" data-edge="${key}" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}"><title>Border ${cellLabel(a, puzzle.width)}-${cellLabel(b, puzzle.width)}</title></line>`;
   }
+
+  html += vertexHitTargetsSvg();
+  html += vertexCluesSvg();
 
   el.boardSvg.setAttribute("viewBox", `0 0 ${widthPx} ${heightPx}`);
   el.boardSvg.setAttribute("width", String(widthPx));
@@ -1285,6 +1392,58 @@ function relationCluesSvg() {
   return html;
 }
 
+function vertexCluesSvg() {
+  let html = "";
+  for (const clue of puzzle.clues ?? []) {
+    if (clue.type !== "vertex") continue;
+    const x = Number(clue.location?.x);
+    const y = Number(clue.location?.y);
+    if (!Number.isInteger(x) || !Number.isInteger(y)) continue;
+    const cx = SVG_PAD + x * CELL;
+    const cy = SVG_PAD + y * CELL;
+    const value = clue.ruleId === "watchtower" ? Number(clue.value ?? 1) : "?";
+    html += `<circle class="watchtower-clue-bg" data-clue-id="${escapeHtml(clue.id)}" data-vertex="${vertexKey(x, y)}" cx="${cx}" cy="${cy}" r="11"><title>${escapeHtml(ruleLabel(clue.ruleId))} clue at vertex (${x}, ${y})</title></circle>`;
+    html += `<text class="watchtower-clue" data-clue-id="${escapeHtml(clue.id)}" data-vertex="${vertexKey(x, y)}" x="${cx}" y="${cy}">${escapeHtml(value)}</text>`;
+  }
+  return html;
+}
+
+function boundaryGraphOverlaySvg() {
+  if (!el.boundaryGraphToggle.checked || !currentSolution) return "";
+  const segments = selectedBorderSegments(currentSolution.regions, puzzle);
+  const degrees = allVertexBorderDegrees(currentSolution.regions, puzzle);
+  const lines = segments.map((segment) => {
+    const line = segmentLine(segment);
+    return `<line class="boundary-segment" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}"></line>`;
+  });
+  const vertices = degrees.map(({ x, y, degree }) => {
+    const cx = SVG_PAD + x * CELL;
+    const cy = SVG_PAD + y * CELL;
+    return `<circle class="boundary-vertex degree-${degree}" cx="${cx}" cy="${cy}" r="${degree >= 3 ? 6 : 4}"></circle>`;
+  });
+  return `<g class="boundary-overlay">${lines.join("")}${vertices.join("")}</g>`;
+}
+
+function vertexHitTargetsSvg() {
+  if (currentTool !== "watchtower" && !el.boundaryGraphToggle.checked) return "";
+  const degreeByKey = new Map();
+  if (el.boundaryGraphToggle.checked && currentSolution) {
+    for (const item of allVertexBorderDegrees(currentSolution.regions, puzzle)) {
+      degreeByKey.set(vertexKey(item.x, item.y), item.degree);
+    }
+  }
+  let html = "";
+  for (let y = 0; y <= puzzle.height; y += 1) {
+    for (let x = 0; x <= puzzle.width; x += 1) {
+      const key = vertexKey(x, y);
+      const degree = degreeByKey.get(key);
+      const title = degree === undefined ? `Vertex (${x}, ${y})` : `Vertex (${x}, ${y}), border degree ${degree}`;
+      html += `<circle class="vertex-hit" data-vertex="${key}" cx="${SVG_PAD + x * CELL}" cy="${SVG_PAD + y * CELL}" r="10"><title>${escapeHtml(title)}</title></circle>`;
+    }
+  }
+  return html;
+}
+
 function edgeLine(a, b) {
   const ca = xy(a, puzzle.width);
   const cb = xy(b, puzzle.width);
@@ -1296,6 +1455,15 @@ function edgeLine(a, b) {
   const x = SVG_PAD + ca.x * CELL;
   const y = SVG_PAD + Math.max(ca.y, cb.y) * CELL;
   return { x1: x + 5, y1: y, x2: x + CELL - 5, y2: y, mx: x + CELL / 2, my: y };
+}
+
+function segmentLine(segment) {
+  if (segment.orientation === "h") {
+    const y = SVG_PAD + segment.y * CELL;
+    return { x1: SVG_PAD + segment.x * CELL, y1: y, x2: SVG_PAD + (segment.x + 1) * CELL, y2: y };
+  }
+  const x = SVG_PAD + segment.x * CELL;
+  return { x1: x, y1: SVG_PAD + segment.y * CELL, x2: x, y2: SVG_PAD + (segment.y + 1) * CELL };
 }
 
 function upsertCellClue(ruleId, cell, data) {
@@ -1331,6 +1499,21 @@ function upsertRelationClue(ruleId, firstCell, secondCell) {
   const rules = { ...puzzle.rules, [ruleId]: puzzle.rules[ruleId] ?? {} };
   const clues = (puzzle.clues ?? []).filter((existing) => existing.id !== clue.id);
   clues.push(clue);
+  return normalizePuzzle({ ...puzzle, rules, clues });
+}
+
+function upsertVertexClue(ruleId, vertex, data) {
+  const rules = { ...puzzle.rules, [ruleId]: puzzle.rules[ruleId] ?? {} };
+  const clues = (puzzle.clues ?? []).filter(
+    (clue) => !(clue.ruleId === ruleId && clue.type === "vertex" && Number(clue.location?.x) === vertex.x && Number(clue.location?.y) === vertex.y)
+  );
+  clues.push({
+    id: `${ruleId}:${vertex.x}:${vertex.y}`,
+    type: "vertex",
+    ruleId,
+    location: { type: "vertex", x: vertex.x, y: vertex.y },
+    ...data
+  });
   return normalizePuzzle({ ...puzzle, rules, clues });
 }
 
@@ -1456,11 +1639,11 @@ function updateTraceControls() {
 
 function updateRelationHint() {
   if (currentTool !== "relation") {
-    el.relationPickHint.textContent = "Choose Relation pair clue, then click two edge-adjacent active cells.";
+    el.relationPickHint.textContent = "Choose Relation pair clue, then click an edge or two edge-adjacent active cells.";
     return;
   }
   if (relationFirstCell === null) {
-    el.relationPickHint.textContent = `Click the first cell for an edge-adjacent ${ruleLabel(el.relationRuleInput.value)} relation clue.`;
+    el.relationPickHint.textContent = `Click an edge, or click the first cell, for an edge-adjacent ${ruleLabel(el.relationRuleInput.value)} relation clue.`;
     return;
   }
   el.relationPickHint.textContent = `First cell: ${cellLabel(relationFirstCell, puzzle.width)}. Click an edge-adjacent second cell.`;
@@ -1501,6 +1684,8 @@ function showSolveResult(result) {
 
   if (!currentSolution) {
     renderStatus(base + errors, result.status === "no_solution" ? "bad" : "warn");
+    if (result.status === "no_solution") showNoSolutionDebug(result);
+    else if (el.noSolutionBox) el.noSolutionBox.hidden = true;
     el.solutionText.textContent = "";
     return;
   }
@@ -1508,6 +1693,7 @@ function showSolveResult(result) {
   const summary = summarizeSolution(currentSolution, puzzle);
   const statusClass = result.status === "unique_solution" ? "good" : "warn";
   renderStatus(base + errors, statusClass);
+  if (el.noSolutionBox) el.noSolutionBox.hidden = true;
   el.solutionText.textContent = `${summary}\n\n${result.status === "multiple_solutions" ? "At least two solutions exist. The overlay shows the first one found." : "Overlay shows the solution found."}`;
 }
 
@@ -1540,6 +1726,59 @@ function showCandidatesForSelectedCell(result) {
 
   el.solutionText.textContent = lines.join("\n");
   renderStatus(`Showing ${result.count} candidate${result.count === 1 ? "" : "s"} for ${result.label}.`, result.count ? "good" : "warn");
+}
+
+function showNoSolutionDebug(result) {
+  if (!el.noSolutionBox) return;
+  el.noSolutionBox.hidden = false;
+  el.noSolutionBox.innerHTML = noSolutionDebugHtml(result);
+}
+
+function noSolutionDebugHtml(result) {
+  const validation = validatePuzzle(puzzle);
+  let diagnostics = null;
+  let violations = [];
+  const diagnosticLimit = Math.min(maxNodes(), 20000);
+  try {
+    diagnostics = generateCandidateDiagnostics(puzzle, { maxCandidates: diagnosticLimit });
+    violations = explainCandidateViolations(puzzle, { maxCandidates: diagnosticLimit }).slice(0, 6);
+  } catch (error) {
+    diagnostics = { errors: [`Candidate diagnostics failed: ${error.message}`], plan: result.candidatePlan ?? null, raw: [], accepted: [], rejected: [] };
+  }
+
+  const acceptedByCell = new Map();
+  for (const cell of puzzle.activeCells ?? []) acceptedByCell.set(cell, 0);
+  for (const candidate of diagnostics.accepted ?? []) {
+    for (const cell of candidate.cells ?? []) acceptedByCell.set(cell, (acceptedByCell.get(cell) ?? 0) + 1);
+  }
+  const zeroCells = [...acceptedByCell.entries()].filter(([, count]) => count === 0).map(([cell]) => cellLabel(cell, puzzle.width));
+  const activeRules = Object.values(RULE_REGISTRY)
+    .filter((rule) => isRuleActive(rule.id))
+    .map((rule) => rule.label);
+  const plan = diagnostics.plan ?? result.candidatePlan ?? null;
+
+  return [
+    debugSection("Validation", validation.errors.length ? validation.errors : ["No validation errors."]),
+    debugSection("Candidate source", [
+      plan ? `Kind: ${plan.kind}${plan.ruleId ? ` via ${ruleLabel(plan.ruleId)}` : ""}.` : "No candidate-source plan was available.",
+      ...(diagnostics.errors ?? [])
+    ]),
+    debugSection("Candidate counts", [
+      `Generated before filtering: ${(diagnostics.raw ?? []).length}.`,
+      `Accepted after filtering: ${(diagnostics.accepted ?? []).length}.`,
+      `Directly rejected: ${(diagnostics.rejected ?? []).length}.`
+    ]),
+    debugSection("Cells with zero accepted candidates", zeroCells.length ? zeroCells : ["None."]),
+    debugSection(
+      "First direct candidate rejections",
+      violations.length ? violations.map((step) => `${ruleLabel(step.ruleId)}: ${step.reason}`) : ["No direct candidate rejections were available."]
+    ),
+    debugSection("Active rules", activeRules.length ? activeRules : ["No rules are active."])
+  ].join("");
+}
+
+function debugSection(title, items) {
+  return `<section><h3>${escapeHtml(title)}</h3><ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>`;
 }
 
 function formatStepDetails(step) {

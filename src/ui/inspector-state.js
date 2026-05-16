@@ -33,6 +33,18 @@ export function selectedClueInspectorState(puzzle, selectedClueId) {
       differenceValue: clue.ruleId === "difference" ? Number(clue.value ?? clue.params?.difference ?? 0) : null
     };
   }
+  if (clue.type === "vertex") {
+    const x = Number(clue.location?.x);
+    const y = Number(clue.location?.y);
+    return {
+      type: "vertex_clue",
+      clue,
+      ruleId: clue.ruleId,
+      vertex: { x, y },
+      label: `Vertex (${x}, ${y})`,
+      value: Number(clue.value ?? 1)
+    };
+  }
   return {
     type: "cell_clue",
     clue,

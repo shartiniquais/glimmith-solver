@@ -36,6 +36,12 @@
                 <label>Height <input id="heightInput" type="number" min="1" max="14" value="6" /></label>
                 <button id="resizeButton" type="button">Apply</button>
               </div>
+              <div class="row compact">
+                <label class="stacked">Load example
+                  <select id="exampleSelect"></select>
+                </label>
+                <button id="loadExampleButton" type="button">Load</button>
+              </div>
               <div class="tool-grid" role="group" aria-label="Drawing tools">
                 <button class="tool active" data-tool="cell" type="button">Active / hole cells</button>
                 <button class="tool" data-tool="symbol" type="button">Cycle symbols</button>
@@ -45,6 +51,7 @@
                 <button class="tool" data-tool="polyomino" type="button">Polyomino clue</button>
                 <button class="tool" data-tool="palisade" type="button">Palisade clue</button>
                 <button class="tool" data-tool="compass" type="button">Compass clue</button>
+                <button class="tool" data-tool="watchtower" type="button">Watchtower clue</button>
                 <button class="tool" data-tool="eraseClue" type="button">Erase clue</button>
               </div>
             </div>
@@ -90,7 +97,15 @@
                   <option value="gt">First region &gt; second region</option>
                 </select>
               </label>
-              <p id="relationPickHint" class="hint">Choose Relation pair clue, then click two edge-adjacent active cells.</p>
+              <p id="relationPickHint" class="hint">Choose Relation pair clue, then click an edge or two edge-adjacent active cells.</p>
+              <label class="stacked">Watchtower value
+                <select id="watchtowerValueInput">
+                  <option value="1">1 region</option>
+                  <option value="2">2 regions</option>
+                  <option value="3">3 regions</option>
+                  <option value="4">4 regions</option>
+                </select>
+              </label>
               <label class="stacked">Palisade pattern
                 <select id="palisadePatternInput">
                   <option value="empty">Empty: 0 borders</option>
@@ -187,6 +202,7 @@
                 <button id="copyTraceButton" type="button">Copy trace text</button>
               </div>
               <button id="clearSolutionButton" type="button">Clear overlay</button>
+              <label class="checkbox-row single"><input id="boundaryGraphToggle" type="checkbox" /> Show boundary graph</label>
               <label class="stacked json-field">Puzzle JSON
                 <textarea id="jsonBox" spellcheck="false"></textarea>
               </label>
@@ -211,6 +227,8 @@
             <span><b class="legend-join"></b> Join</span>
             <span><b class="legend-gemini"></b> Gemini / same shape</span>
             <span><b class="legend-delta"></b> Delta / different shape</span>
+            <span><b class="legend-degree3"></b> Degree 3 vertex</span>
+            <span><b class="legend-degree4"></b> Degree 4 vertex</span>
           </div>
         </section>
 
@@ -226,6 +244,7 @@
           <section>
             <h2>Result</h2>
             <div id="statusBox" class="status">Ready.</div>
+            <div id="noSolutionBox" class="debug-panel" hidden></div>
             <pre id="solutionText"></pre>
           </section>
           <section class="tool-help">
@@ -238,13 +257,17 @@
               <dt>Cycle borders</dt>
               <dd>Edge marks cycle through cut, join, Gemini, and Delta.</dd>
               <dt>Relation pair clue</dt>
-              <dd>Click two cells to relate their eventual regions.</dd>
+              <dd>Click an edge or two edge-adjacent cells to relate their eventual regions.</dd>
               <dt>Area number clue</dt>
               <dd>Places a fixed region-size clue on one cell.</dd>
               <dt>Polyomino clue</dt>
               <dd>Places a drawn shape clue on one cell.</dd>
               <dt>Palisade / Compass clues</dt>
               <dd>Place cell clues for side-border patterns or directional counts.</dd>
+              <dt>Watchtower clue</dt>
+              <dd>Click a grid vertex to count distinct regions touching that corner.</dd>
+              <dt>Boundary graph</dt>
+              <dd>Shows selected solution borders and highlights degree 3 or degree 4 vertices for Loopy and Bricky debugging.</dd>
               <dt>Screenshot tracing</dt>
               <dd>Use an image as a manual tracing layer behind the grid.</dd>
             </dl>

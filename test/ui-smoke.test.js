@@ -15,6 +15,9 @@ test("index.html exposes rule palette and validation UI anchors", () => {
   assert.match(indexHtml, /id="currentToolBanner"/);
   assert.match(indexHtml, /id="inspectorBox"/);
   assert.match(indexHtml, /id="shapeBankList"/);
+  assert.match(indexHtml, /id="boundaryGraphToggle"/);
+  assert.match(indexHtml, /id="noSolutionBox"/);
+  assert.match(indexHtml, /id="exampleSelect"/);
 });
 
 test("index.html exposes theme toggle controls", () => {
@@ -73,10 +76,11 @@ test("shape-bank editor has list and preview support", () => {
 test("relation tool UI describes edge-adjacent placement", () => {
   assert.match(indexHtml, /id="relationPickHint"/);
   assert.match(appSource, /edge-adjacent/);
+  assert.match(appSource, /Click an edge/);
   assert.match(appSource, /orthogonally adjacent/);
 });
 
-test("Palisade and Compass placement controls are present", () => {
+test("Palisade, Compass, and Watchtower placement controls are present", () => {
   assert.match(indexHtml, /data-tool="palisade"/);
   assert.match(indexHtml, /id="palisadePatternInput"/);
   assert.match(indexHtml, /data-tool="compass"/);
@@ -84,4 +88,8 @@ test("Palisade and Compass placement controls are present", () => {
   assert.match(indexHtml, /id="compassEInput"/);
   assert.match(indexHtml, /id="compassSInput"/);
   assert.match(indexHtml, /id="compassWInput"/);
+  assert.match(indexHtml, /data-tool="watchtower"/);
+  assert.match(indexHtml, /id="watchtowerValueInput"/);
+  assert.equal(IMPLEMENTED_RULE_VISUALS.watchtower.type, "placementTool");
+  assert.equal(IMPLEMENTED_RULE_VISUALS.watchtower.target, "watchtower");
 });
