@@ -180,11 +180,19 @@ textarea {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(300px, 360px) minmax(460px, 1fr) minmax(300px, 360px);
-  gap: 1rem;
+  grid-template-columns: minmax(280px, 330px) minmax(520px, 1fr) minmax(340px, 400px);
+  grid-template-areas: "sidebar board inspector";
+  gap: 1.25rem;
   padding: 1rem;
   align-items: start;
 }
+
+.sidebar { grid-area: sidebar; }
+.board-workspace {
+  grid-area: board;
+  min-width: 0;
+}
+.inspector { grid-area: inspector; }
 
 .panel {
   background: var(--surface);
@@ -540,6 +548,23 @@ textarea {
   fill: var(--poly-bg);
 }
 
+.poly-clue-shape {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.poly-clue-shape rect {
+  fill: var(--poly-bg);
+  stroke: var(--surface);
+  stroke-width: 1.5;
+}
+
+.poly-clue-hit {
+  fill: transparent;
+  stroke: transparent;
+  pointer-events: all;
+}
+
 .relation-clue-line {
   pointer-events: auto;
   cursor: pointer;
@@ -834,9 +859,12 @@ textarea {
   margin: -0.25rem 0 0.25rem;
 }
 
-@media (max-width: 1240px) {
+@media (max-width: 1100px) {
   .workspace {
     grid-template-columns: minmax(290px, 340px) minmax(420px, 1fr);
+    grid-template-areas:
+      "sidebar board"
+      "inspector inspector";
   }
 
   .inspector {
@@ -854,6 +882,10 @@ textarea {
 
   .workspace {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "sidebar"
+      "board"
+      "inspector";
   }
 
   .sidebar {

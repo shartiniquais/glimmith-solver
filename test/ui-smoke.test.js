@@ -121,3 +121,9 @@ test("Palisade, Compass, and Watchtower placement controls are present", () => {
   assert.equal(IMPLEMENTED_RULE_VISUALS.watchtower.type, "placementTool");
   assert.equal(IMPLEMENTED_RULE_VISUALS.watchtower.target, "watchtower");
 });
+
+test("Polyomino clue rendering uses a miniature shape icon", () => {
+  assert.match(appSource, /polyominoClueShapeSvg/);
+  assert.match(appSource, /CELL \* 0\.85/);
+  assert.match(appSource, /boundsOfShape/);
+});

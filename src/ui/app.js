@@ -1,4 +1,4 @@
-import { activeAdjacencyEdges, cellLabel, edgeKey, idx, normalizeShape, parseEdgeKey, xy } from "../core/geometry.js";
+import { activeAdjacencyEdges, boundsOfShape, cellLabel, edgeKey, idx, normalizeShape, parseEdgeKey, xy } from "../core/geometry.js";
 import {
   createPuzzle,
   cycleCellSymbol,
@@ -1565,8 +1565,7 @@ function cellClueSvg(clues, rx, ry) {
   }
   const polyClue = clues.find((clue) => clue.ruleId === "polyomino");
   if (polyClue) {
-    html += `<circle class="cell-clue-bg poly-clue-bg" data-clue-id="${escapeHtml(polyClue.id)}" data-cell="${polyClue.location.cell}" cx="${rx + CELL - 12}" cy="${ry + 12}" r="10"><title>Polyomino clue</title></circle>`;
-    html += `<text class="cell-clue" data-clue-id="${escapeHtml(polyClue.id)}" data-cell="${polyClue.location.cell}" x="${rx + CELL - 12}" y="${ry + 12}">P</text>`;
+    html += polyominoClueShapeSvg(polyClue, rx, ry);
   }
   const palisadeClue = clues.find((clue) => clue.ruleId === "palisade");
   if (palisadeClue) {
@@ -1579,6 +1578,30 @@ function cellClueSvg(clues, rx, ry) {
     html += `<text class="cell-clue" data-clue-id="${escapeHtml(compassClue.id)}" data-cell="${compassClue.location.cell}" x="${rx + CELL - 12}" y="${ry + CELL - 12}">C</text>`;
   }
   return html;
+}
+
+function polyominoClueShapeSvg(clue, rx, ry) {
+  const shape = normalizeShape(clue.params?.shape ?? []);
+  if (shape.length === 0) {
+    return `<circle class="cell-clue-bg poly-clue-bg" data-clue-id="${escapeHtml(clue.id)}" data-cell="${clue.location.cell}" cx="${rx + CELL / 2}" cy="${ry + CELL / 2}" r="10"><title>Polyomino clue</title></circle>
+      <text class="cell-clue" data-clue-id="${escapeHtml(clue.id)}" data-cell="${clue.location.cell}" x="${rx + CELL / 2}" y="${ry + CELL / 2}">P</text>`;
+  }
+  const bounds = boundsOfShape(shape);
+  const maxSize = CELL * 0.85;
+  const unit = Math.min(maxSize / bounds.width, maxSize / bounds.height);
+  const width = bounds.width * unit;
+  const height = bounds.height * unit;
+  const x0 = rx + (CELL - width) / 2;
+  const y0 = ry + (CELL - height) / 2;
+  const attrs = `data-clue-id="${escapeHtml(clue.id)}" data-cell="${clue.location.cell}"`;
+  const rects = shape
+    .map(([x, y]) => `<rect ${attrs} x="${x0 + x * unit + 1}" y="${y0 + y * unit + 1}" width="${Math.max(1, unit - 2)}" height="${Math.max(1, unit - 2)}" rx="3"></rect>`)
+    .join("");
+  return `<g class="poly-clue-shape" ${attrs}>
+    <title>Polyomino clue shape</title>
+    ${rects}
+    <rect class="poly-clue-hit" ${attrs} x="${x0}" y="${y0}" width="${width}" height="${height}" rx="4"></rect>
+  </g>`;
 }
 
 function relationCluesSvg() {
