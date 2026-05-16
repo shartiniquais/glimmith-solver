@@ -25,9 +25,9 @@ export function generateCandidates(puzzle, options = {}) {
   const raw = [];
 
   if (plan.kind === "shape_bank") {
-    raw.push(...generateShapePlacementCandidates(puzzle, plan.shapes, maxCandidates));
+    raw.push(...generateShapePlacementCandidates(puzzle, plan.shapes, maxCandidates, "shapeBank"));
   } else if (plan.kind === "polyomino_clues") {
-    raw.push(...generateShapePlacementCandidates(puzzle, plan.shapes, maxCandidates));
+    raw.push(...generateShapePlacementCandidates(puzzle, plan.shapes, maxCandidates, "polyomino"));
   } else if (plan.kind === "fixed_area") {
     raw.push(...generateConnectedCandidates(puzzle, plan.area, maxCandidates));
   } else if (plan.kind === "area_number_clues") {
@@ -36,11 +36,13 @@ export function generateCandidates(puzzle, options = {}) {
     errors.push("Set a Precision area or provide a shape bank before solving.");
   }
 
+  const excludedMasks = new Set(puzzle.metadata?.excludedCandidateMasks ?? []);
   const filtered = [];
   const seen = new Set();
   for (const candidate of raw) {
     if (seen.has(candidate.mask.toString())) continue;
     seen.add(candidate.mask.toString());
+    if (excludedMasks.has(candidate.mask.toString())) continue;
     if (!applyCandidateFilters(candidate, context, [edgeConstraintsRule])) continue;
     candidate.id = filtered.length;
     filtered.push(candidate);
@@ -53,7 +55,7 @@ export function generateCandidates(puzzle, options = {}) {
     errors.push(`Candidate generation stopped at ${maxCandidates} regions. Add more rules or lower the board size.`);
   }
 
-  return { candidates: filtered, errors };
+  return { candidates: filtered, errors, plan };
 }
 
 export function buildCandidateGenerationPlan(puzzle, context = createRuleContext(puzzle)) {
@@ -125,7 +127,7 @@ function makeCandidate(indexes, width, height, source, sourceName = "", matchOpt
   };
 }
 
-function generateShapePlacementCandidates(puzzle, shapes, maxCandidates) {
+function generateShapePlacementCandidates(puzzle, shapes, maxCandidates, source = "shapeBank") {
   const candidates = [];
   for (const shape of shapes) {
     if (puzzle.rules.precision?.area > 0 && shape.cells.length !== puzzle.rules.precision.area) continue;
@@ -152,7 +154,7 @@ function generateShapePlacementCandidates(puzzle, shapes, maxCandidates) {
             indexes.push(cell);
           }
           if (!ok) continue;
-          candidates.push(makeCandidate(indexes, puzzle.width, puzzle.height, "shapeBank", shape.name, shape.matchOptions));
+          candidates.push(makeCandidate(indexes, puzzle.width, puzzle.height, source, shape.name, shape.matchOptions));
           if (candidates.length >= maxCandidates) return candidates;
         }
       }

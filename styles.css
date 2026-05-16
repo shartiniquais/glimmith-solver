@@ -240,6 +240,10 @@ textarea {
 .trace-cell.active-cell { fill-opacity: 0.72; }
 .trace-cell.inactive-cell { fill-opacity: 0.84; }
 .cell.solution-cell { stroke-width: 1.5; }
+.cell.selected-cell {
+  stroke: #255f6f;
+  stroke-width: 2.5;
+}
 .cell.relation-pick-cell {
   stroke: var(--accent-strong);
   stroke-width: 3;

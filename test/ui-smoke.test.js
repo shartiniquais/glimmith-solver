@@ -10,6 +10,8 @@ const appSource = readFileSync(new URL("../src/ui/app.js", import.meta.url), "ut
 test("index.html exposes rule palette and validation UI anchors", () => {
   assert.match(indexHtml, /id="rulePalette"/);
   assert.match(indexHtml, /id="validationBox"/);
+  assert.match(indexHtml, /id="explainAllButton"/);
+  assert.match(indexHtml, /id="showCandidatesButton"/);
 });
 
 test("app imports RULE_REGISTRY for registry-driven UI", () => {

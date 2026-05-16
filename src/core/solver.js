@@ -37,7 +37,7 @@ export function solvePuzzle(rawPuzzle, options = {}) {
   }
 
   let context = createRuleContext(puzzle, options);
-  const { candidates, errors } = generateCandidates(puzzle, { ...options, context });
+  const { candidates, errors, plan } = generateCandidates(puzzle, { ...options, context });
   context = createRuleContext(puzzle, { ...options, candidates });
   const candidatesByCell = Array.from({ length: puzzle.width * puzzle.height }, () => []);
   for (const candidate of candidates) {
@@ -51,6 +51,7 @@ export function solvePuzzle(rawPuzzle, options = {}) {
         solutions: [],
         errors: [...errors, `No valid region candidate can cover cell ${cell}.`],
         candidates,
+        candidatePlan: plan,
         nodeCount: 0,
         truncated: false
       };
@@ -79,6 +80,7 @@ export function solvePuzzle(rawPuzzle, options = {}) {
     solutions,
     errors,
     candidates,
+    candidatePlan: plan,
     nodeCount,
     truncated: hitNodeLimit || solutions.length >= limit
   };

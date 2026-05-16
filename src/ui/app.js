@@ -5,12 +5,19 @@ import {
   cycleEdgeConstraint,
   normalizePuzzle,
   resizePuzzle,
-  setEdgeState,
   TETROMINO_PRESET,
   toggleCellActive
 } from "../core/puzzle.js";
 import { solvePuzzle } from "../core/solver.js";
-import { findNextLogicalStep, summarizeSolution } from "../core/explain.js";
+import {
+  applyLogicalStep,
+  describeCandidatesForCell,
+  explainAllLogicalSteps,
+  findNextLogicalStep,
+  formatExplanationTrace,
+  isStepApplyable,
+  summarizeSolution
+} from "../core/explain.js";
 import { validatePuzzle } from "../core/validation.js";
 import { RULE_REGISTRY } from "../core/rules/registry.js";
 import { RULE_HELP } from "./rule-ui-metadata.js";
@@ -24,6 +31,8 @@ let puzzle = createPuzzle(6, 6);
 let currentTool = "cell";
 let currentSolution = null;
 let lastStep = null;
+let selectedCell = null;
+let explanationTrace = [];
 let relationFirstCell = null;
 let shapeDraftCells = new Set(["0,0", "1,0", "0,1", "1,1"]);
 let polyominoDraftCells = new Set(["0,0", "1,0", "0,1"]);
@@ -72,7 +81,11 @@ const el = {
   maxNodesInput: document.getElementById("maxNodesInput"),
   solveButton: document.getElementById("solveButton"),
   nextStepButton: document.getElementById("nextStepButton"),
+  explainAllButton: document.getElementById("explainAllButton"),
   applyStepButton: document.getElementById("applyStepButton"),
+  showCandidatesButton: document.getElementById("showCandidatesButton"),
+  exportTraceButton: document.getElementById("exportTraceButton"),
+  copyTraceButton: document.getElementById("copyTraceButton"),
   clearSolutionButton: document.getElementById("clearSolutionButton"),
   exportJsonButton: document.getElementById("exportJsonButton"),
   importJsonButton: document.getElementById("importJsonButton"),
@@ -235,20 +248,58 @@ function bindEvents() {
     updateRulesFromForm(false);
     const result = findNextLogicalStep(puzzle, { maxNodes: maxNodes() });
     lastStep = result.step ?? null;
-    el.applyStepButton.disabled = !lastStep;
+    el.applyStepButton.disabled = !isStepApplyable(lastStep);
     showStepResult(result);
+    render();
+  });
+
+  el.explainAllButton.addEventListener("click", () => {
+    updateRulesFromForm(false);
+    const result = explainAllLogicalSteps(puzzle, { maxNodes: maxNodes() });
+    explanationTrace = result.steps;
+    puzzle = result.puzzle;
+    clearComputed();
+    lastStep = null;
+    el.solutionText.textContent = `${result.text}\n\nTrace status: ${result.status}. ${result.message}`;
+    renderStatus(`Built ${result.steps.length} explanation step${result.steps.length === 1 ? "" : "s"}.`, result.steps.length ? "good" : "warn");
     render();
   });
 
   el.applyStepButton.addEventListener("click", () => {
     if (!lastStep) return;
-    const [a, b] = lastStep.edge;
-    puzzle = setEdgeState(puzzle, a, b, lastStep.state);
+    puzzle = applyLogicalStep(puzzle, lastStep);
+    explanationTrace.push(lastStep);
     clearComputed();
     lastStep = null;
     el.applyStepButton.disabled = true;
-    renderStatus("Applied the forced border.", "good");
+    renderStatus("Applied the logical step.", "good");
     render();
+  });
+
+  el.showCandidatesButton.addEventListener("click", () => {
+    updateRulesFromForm(false);
+    if (selectedCell === null) {
+      renderStatus("Select a cell on the board first.", "warn");
+      return;
+    }
+    const result = describeCandidatesForCell(puzzle, selectedCell, { maxNodes: maxNodes() });
+    showCandidatesForSelectedCell(result);
+  });
+
+  el.exportTraceButton.addEventListener("click", () => {
+    el.jsonBox.value = JSON.stringify(explanationTrace, null, 2);
+    renderStatus("Explanation trace JSON exported into the text area.", explanationTrace.length ? "good" : "warn");
+  });
+
+  el.copyTraceButton.addEventListener("click", async () => {
+    const text = formatExplanationTrace(explanationTrace, puzzle.width);
+    try {
+      await navigator.clipboard.writeText(text);
+      renderStatus("Explanation trace copied as text.", "good");
+    } catch {
+      el.jsonBox.value = text;
+      renderStatus("Clipboard was unavailable, so the trace text was placed in the text area.", "warn");
+    }
   });
 
   el.clearSolutionButton.addEventListener("click", () => {
@@ -286,6 +337,7 @@ function bindEvents() {
 }
 
 function handleCellClick(cell) {
+  selectedCell = cell;
   if (!puzzle.active[cell] && currentTool !== "cell") {
     renderStatus(`Cell ${cellLabel(cell, puzzle.width)} is inactive. Activate it before placing clues.`, "warn");
     return;
@@ -619,7 +671,7 @@ function renderBoard() {
   const widthPx = puzzle.width * CELL + SVG_PAD * 2;
   const heightPx = puzzle.height * CELL + SVG_PAD * 2;
   const regionByCell = currentSolution?.regionByCell ?? {};
-  const stepEdgeKey = lastStep ? edgeKey(lastStep.edge[0], lastStep.edge[1]) : null;
+  const stepEdgeKey = lastStep?.edge ? edgeKey(lastStep.edge[0], lastStep.edge[1]) : null;
   const cellClues = cellCluesByCell();
 
   let html = "";
@@ -638,6 +690,7 @@ function renderBoard() {
         "cell",
         traceImage.href ? "trace-cell" : "",
         active ? "active-cell" : "inactive-cell",
+        selectedCell === cell ? "selected-cell" : "",
         relationFirstCell === cell ? "relation-pick-cell" : "",
         regionId ? "solution-cell" : ""
       ].join(" ");
@@ -668,7 +721,7 @@ function renderBoard() {
         const text = constraint.relation === "sameShape" ? "G" : "D";
         html += `<text class="edge-label" x="${line.mx}" y="${line.my}">${text}</text>`;
       }
-      if (isStep) {
+      if (isStep && lastStep?.state) {
         const text = lastStep.state === "join" ? "J" : "C";
         html += `<text class="edge-label" x="${line.mx}" y="${line.my}">${text}</text>`;
       }
@@ -944,7 +997,7 @@ function showSolveResult(result) {
 function showStepResult(result) {
   if (result.step) {
     renderStatus(`${result.step.title}\n\n${result.step.reason}`, "good");
-    el.solutionText.textContent = "The highlighted border is the next forced step. Use Apply step to add it to the puzzle state.";
+    el.solutionText.textContent = formatStepDetails(result.step);
     return;
   }
   const statusClass = result.status === "no_solution" ? "bad" : "warn";
@@ -953,6 +1006,30 @@ function showStepResult(result) {
     currentSolution = result.base.solutions[0];
     el.solutionText.textContent = summarizeSolution(currentSolution, puzzle);
   }
+}
+
+function showCandidatesForSelectedCell(result) {
+  const lines = [
+    `Selected cell: ${result.label}`,
+    `Candidate count: ${result.count}`,
+    result.errors.length ? `Solver warnings/errors: ${result.errors.join("; ")}` : ""
+  ].filter(Boolean);
+
+  for (const candidate of result.candidates) {
+    const source = candidate.ruleId ? ` via ${ruleLabel(candidate.ruleId)}` : "";
+    const name = candidate.sourceName ? ` (${candidate.sourceName})` : "";
+    lines.push(`- #${candidate.id}: ${candidate.labels.join(", ")}; area ${candidate.area}; shape ${candidate.shapeKey}${source}${name}`);
+  }
+
+  el.solutionText.textContent = lines.join("\n");
+  renderStatus(`Showing ${result.count} candidate${result.count === 1 ? "" : "s"} for ${result.label}.`, result.count ? "good" : "warn");
+}
+
+function formatStepDetails(step) {
+  const proof = step.proof ? `Proof: ${step.proof.result} under ${JSON.stringify(step.proof.assumption)}.` : "";
+  const rule = step.ruleId ? `Rule: ${ruleLabel(step.ruleId)}.` : "Rule: exact-cover consistency.";
+  const apply = isStepApplyable(step) ? "Use Apply step to add this deduction to the puzzle state." : "This explanation is informative and has no direct state change.";
+  return `${step.reason}\n\n${rule}\n${proof}\n${apply}`;
 }
 
 function renderStatus(text, kind) {

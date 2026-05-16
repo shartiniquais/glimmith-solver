@@ -283,5 +283,7 @@ test("next-step explainer finds a forced join", () => {
   puzzle.rules.area = 4;
   const result = findNextLogicalStep(puzzle);
   assert.equal(result.status, "step");
-  assert.equal(result.step.state, "join");
+  assert.equal(result.step.type, "forced_region");
+  assert.equal(result.step.proof.result, "all_completions_agree");
+  assert.deepEqual(result.step.cells, [0, 1, 2, 3]);
 });
