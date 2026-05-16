@@ -1,0 +1,70 @@
+{
+  "fixtures": [
+    {
+      "name": "shape-bank-square-unique",
+      "rulesCovered": ["shape_bank"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 1,
+      "expectedForcedSteps": ["forced_region"],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "rules": {
+          "area": 4,
+          "shapeBankText": "O4: 0,0 1,0 0,1 1,1"
+        }
+      }
+    },
+    {
+      "name": "shape-bank-monomino-domino-multiple",
+      "rulesCovered": ["shape_bank"],
+      "expectedStatus": "multiple_solutions",
+      "expectedSolutionLimit": 2,
+      "expectedSolutionCount": 2,
+      "expectedRegionCount": null,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 3,
+        "height": 1,
+        "rules": {
+          "area": 0,
+          "shapeBankText": "M1: 0,0\nI2: 0,0 1,0"
+        }
+      }
+    },
+    {
+      "name": "shape-bank-untileable-line",
+      "rulesCovered": ["shape_bank"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 3,
+        "height": 1,
+        "rules": {
+          "area": 0,
+          "shapeBankText": "I2: 0,0 1,0"
+        }
+      }
+    },
+    {
+      "name": "shape-bank-invalid-coordinate",
+      "rulesCovered": ["shape_bank"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["Shape Bank", "invalid coordinate"],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "rules": {
+          "area": 0,
+          "shapeBankText": "Broken: 0,0 nope"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "fixtures": [
+    {
+      "name": "polyomino-vertical-domino-unique",
+      "rulesCovered": ["polyomino"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 2,
+      "expectedForcedSteps": ["forced_region"],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "clues": [
+          {
+            "id": "vertical",
+            "type": "cell",
+            "ruleId": "polyomino",
+            "location": { "type": "cell", "cell": 0 },
+            "params": { "shape": [[0, 0], [0, 1]], "allowRotations": false, "allowReflections": false }
+          }
+        ],
+        "rules": { "area": 0, "polyomino": { "allowRotations": false, "allowReflections": false } }
+      }
+    },
+    {
+      "name": "polyomino-domino-multiple",
+      "rulesCovered": ["polyomino"],
+      "expectedStatus": "multiple_solutions",
+      "expectedSolutionLimit": 2,
+      "expectedSolutionCount": 2,
+      "expectedRegionCount": 2,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "clues": [
+          {
+            "id": "domino",
+            "type": "cell",
+            "ruleId": "polyomino",
+            "location": { "type": "cell", "cell": 0 },
+            "params": { "shape": [[0, 0], [1, 0]], "allowRotations": true, "allowReflections": false }
+          }
+        ],
+        "rules": { "area": 0, "polyomino": { "allowRotations": true, "allowReflections": false } }
+      }
+    },
+    {
+      "name": "polyomino-too-large-impossible",
+      "rulesCovered": ["polyomino"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 2,
+        "height": 1,
+        "clues": [
+          {
+            "id": "too_large",
+            "type": "cell",
+            "ruleId": "polyomino",
+            "location": { "type": "cell", "cell": 0 },
+            "params": { "shape": [[0, 0], [1, 0], [2, 0]] }
+          }
+        ],
+        "rules": { "area": 0 }
+      }
+    },
+    {
+      "name": "polyomino-invalid-empty-shape",
+      "rulesCovered": ["polyomino"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["requires a non-empty shape"],
+      "puzzle": {
+        "width": 1,
+        "height": 1,
+        "clues": [
+          { "id": "empty", "type": "cell", "ruleId": "polyomino", "location": { "type": "cell", "cell": 0 }, "params": { "shape": [] } }
+        ],
+        "rules": { "area": 0 }
+      }
+    }
+  ]
+}

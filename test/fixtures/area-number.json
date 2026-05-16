@@ -1,0 +1,71 @@
+{
+  "fixtures": [
+    {
+      "name": "area-number-line-unique",
+      "rulesCovered": ["area_number"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 2,
+      "expectedForcedSteps": ["candidate_eliminated", "forced_region"],
+      "puzzle": {
+        "width": 3,
+        "height": 1,
+        "clues": [
+          { "id": "one", "type": "cell", "ruleId": "area_number", "value": 1, "location": { "type": "cell", "cell": 0 } },
+          { "id": "two", "type": "cell", "ruleId": "area_number", "value": 2, "location": { "type": "cell", "cell": 1 } }
+        ],
+        "rules": { "area": 0 }
+      }
+    },
+    {
+      "name": "area-number-2x2-multiple",
+      "rulesCovered": ["area_number"],
+      "expectedStatus": "multiple_solutions",
+      "expectedSolutionLimit": 2,
+      "expectedSolutionCount": 2,
+      "expectedRegionCount": 2,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "clues": [
+          { "id": "two", "type": "cell", "ruleId": "area_number", "value": 2, "location": { "type": "cell", "cell": 0 } }
+        ],
+        "rules": { "area": 0 }
+      }
+    },
+    {
+      "name": "area-number-too-large-impossible",
+      "rulesCovered": ["area_number"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 2,
+        "height": 1,
+        "clues": [
+          { "id": "three", "type": "cell", "ruleId": "area_number", "value": 3, "location": { "type": "cell", "cell": 0 } }
+        ],
+        "rules": { "area": 0 }
+      }
+    },
+    {
+      "name": "area-number-invalid-zero",
+      "rulesCovered": ["area_number"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["requires a positive integer value"],
+      "puzzle": {
+        "width": 1,
+        "height": 1,
+        "clues": [
+          { "id": "zero", "type": "cell", "ruleId": "area_number", "value": 0, "location": { "type": "cell", "cell": 0 } }
+        ],
+        "rules": { "area": 0 }
+      }
+    }
+  ]
+}

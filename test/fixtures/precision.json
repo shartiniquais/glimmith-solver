@@ -1,0 +1,59 @@
+{
+  "fixtures": [
+    {
+      "name": "precision-2x2-unique",
+      "rulesCovered": ["precision"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 1,
+      "expectedForcedSteps": ["forced_region"],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "rules": { "area": 4 }
+      }
+    },
+    {
+      "name": "precision-2x2-multiple-dominoes",
+      "rulesCovered": ["precision"],
+      "expectedStatus": "multiple_solutions",
+      "expectedSolutionLimit": 2,
+      "expectedSolutionCount": 2,
+      "expectedRegionCount": 2,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "rules": { "area": 2 }
+      }
+    },
+    {
+      "name": "precision-3x1-impossible-dominoes",
+      "rulesCovered": ["precision"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 3,
+        "height": 1,
+        "rules": { "area": 2 }
+      }
+    },
+    {
+      "name": "precision-invalid-active-cells",
+      "rulesCovered": ["precision"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["outside the 2 by 2 board", "appears more than once"],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "activeCells": [0, 0, 9],
+        "rules": { "area": 2 }
+      }
+    }
+  ]
+}

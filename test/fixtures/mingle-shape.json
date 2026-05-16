@@ -1,0 +1,63 @@
+{
+  "fixtures": [
+    {
+      "name": "mingle-shape-separated-dominoes-unique",
+      "rulesCovered": ["mingle_shape"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 2,
+      "expectedForcedSteps": ["forced_region"],
+      "puzzle": {
+        "width": 5,
+        "height": 1,
+        "activeCells": [0, 1, 3, 4],
+        "rules": { "area": 2, "mingle_shape": {} }
+      }
+    },
+    {
+      "name": "mingle-shape-multiple-with-shared-border",
+      "rulesCovered": ["mingle_shape"],
+      "expectedStatus": "multiple_solutions",
+      "expectedSolutionLimit": 2,
+      "expectedSolutionCount": 2,
+      "expectedRegionCount": 2,
+      "expectedForcedSteps": ["forced_join"],
+      "expectedForcedEdge": { "edge": [1, 2], "state": "join" },
+      "stepOptions": { "completionLimit": 10 },
+      "puzzle": {
+        "width": 3,
+        "height": 3,
+        "activeCells": [0, 1, 2, 3, 4, 6],
+        "rules": { "area": 3, "mingle_shape": {} }
+      }
+    },
+    {
+      "name": "mingle-shape-adjacent-dominoes-impossible",
+      "rulesCovered": ["mingle_shape"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 4,
+        "height": 1,
+        "rules": { "area": 2, "mingle_shape": {} }
+      }
+    },
+    {
+      "name": "mingle-shape-invalid-active-cells",
+      "rulesCovered": ["mingle_shape"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["appears more than once"],
+      "puzzle": {
+        "width": 2,
+        "height": 1,
+        "activeCells": [0, 0],
+        "rules": { "area": 1, "mingle_shape": {} }
+      }
+    }
+  ]
+}

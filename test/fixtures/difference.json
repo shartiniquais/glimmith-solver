@@ -1,0 +1,57 @@
+{
+  "fixtures": [
+    {
+      "name": "difference-monomino-domino-unique",
+      "rulesCovered": ["difference"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 2,
+      "expectedForcedSteps": ["candidate_eliminated", "forced_region"],
+      "puzzle": {
+        "width": 3,
+        "height": 1,
+        "clues": [
+          { "id": "difference_0_1", "type": "relation", "ruleId": "difference", "value": 1, "regionRefs": [{ "cell": 0 }, { "cell": 1 }] }
+        ],
+        "rules": {
+          "area": 0,
+          "shapeBankText": "M1: 0,0\nI2: 0,0 1,0",
+          "difference": {}
+        }
+      }
+    },
+    {
+      "name": "difference-area-gap-impossible",
+      "rulesCovered": ["difference"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 2,
+        "height": 1,
+        "clues": [
+          { "id": "difference_0_1", "type": "relation", "ruleId": "difference", "value": 1, "regionRefs": [{ "cell": 0 }, { "cell": 1 }] }
+        ],
+        "rules": { "area": 1, "difference": {} }
+      }
+    },
+    {
+      "name": "difference-invalid-negative-value",
+      "rulesCovered": ["difference"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["requires a non-negative integer value"],
+      "puzzle": {
+        "width": 2,
+        "height": 1,
+        "clues": [
+          { "id": "bad_difference", "type": "relation", "ruleId": "difference", "value": -1, "regionRefs": [{ "cell": 0 }, { "cell": 1 }] }
+        ],
+        "rules": { "area": 1, "difference": {} }
+      }
+    }
+  ]
+}

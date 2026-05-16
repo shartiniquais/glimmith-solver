@@ -1,0 +1,57 @@
+{
+  "fixtures": [
+    {
+      "name": "delta-monomino-domino-unique",
+      "rulesCovered": ["delta"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 2,
+      "expectedForcedSteps": ["candidate_eliminated", "forced_region"],
+      "puzzle": {
+        "width": 3,
+        "height": 1,
+        "clues": [
+          { "id": "delta_0_1", "type": "relation", "ruleId": "delta", "regionRefs": [{ "cell": 0 }, { "cell": 1 }] }
+        ],
+        "rules": {
+          "area": 0,
+          "shapeBankText": "M1: 0,0\nI2: 0,0 1,0",
+          "delta": {}
+        }
+      }
+    },
+    {
+      "name": "delta-same-shape-impossible",
+      "rulesCovered": ["delta"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": ["candidate_eliminated"],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "clues": [
+          { "id": "delta_0_1", "type": "relation", "ruleId": "delta", "regionRefs": [{ "cell": 0 }, { "cell": 1 }] }
+        ],
+        "rules": { "area": 2, "delta": {} }
+      }
+    },
+    {
+      "name": "delta-invalid-relation-ref-count",
+      "rulesCovered": ["delta"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["must reference two region cells"],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "clues": [
+          { "id": "bad_delta", "type": "relation", "ruleId": "delta", "regionRefs": [{ "cell": 0 }] }
+        ],
+        "rules": { "area": 1, "delta": {} }
+      }
+    }
+  ]
+}

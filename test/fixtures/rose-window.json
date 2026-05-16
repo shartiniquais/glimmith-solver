@@ -1,0 +1,62 @@
+{
+  "fixtures": [
+    {
+      "name": "rose-window-ab-line-unique",
+      "rulesCovered": ["rose_window"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 2,
+      "expectedForcedSteps": ["forced_region", "candidate_eliminated"],
+      "puzzle": {
+        "width": 4,
+        "height": 1,
+        "symbols": { "0": "A", "1": "B", "2": "A", "3": "B" },
+        "rules": { "area": 2, "roseLabels": "AB" }
+      }
+    },
+    {
+      "name": "rose-window-2x2-multiple",
+      "rulesCovered": ["rose_window"],
+      "expectedStatus": "multiple_solutions",
+      "expectedSolutionLimit": 2,
+      "expectedSolutionCount": 2,
+      "expectedRegionCount": 2,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "symbols": { "0": "A", "1": "B", "2": "B", "3": "A" },
+        "rules": { "area": 2, "roseLabels": "AB" }
+      }
+    },
+    {
+      "name": "rose-window-missing-symbols-impossible",
+      "rulesCovered": ["rose_window"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": ["candidate_eliminated"],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "symbols": { "0": "A", "1": "B" },
+        "rules": { "area": 2, "roseLabels": "AB" }
+      }
+    },
+    {
+      "name": "rose-window-invalid-symbol-cell",
+      "rulesCovered": ["rose_window"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["Symbol cell \"9\" is outside the board"],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "symbols": { "9": "A" },
+        "rules": { "area": 1, "roseLabels": "A" }
+      }
+    }
+  ]
+}
