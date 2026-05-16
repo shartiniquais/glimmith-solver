@@ -62,7 +62,7 @@ Polyomino clue:
 }
 ```
 
-Gemini, Delta, and Difference use generic relation clues with `regionRefs`, so they are not tied permanently to edge-only UI placement.
+Gemini, Delta, Difference, and Inequality use generic relation clues with `regionRefs` internally. Their confirmed game-facing semantics are edge-adjacent, so validation requires the referenced cells or edge-location cells to share an orthogonal edge.
 
 ## Remaining Limitations
 

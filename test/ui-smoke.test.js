@@ -69,3 +69,9 @@ test("shape-bank editor has list and preview support", () => {
   assert.match(appSource, /renderShapeBankList/);
   assert.match(appSource, /shapePreviewSvg/);
 });
+
+test("relation tool UI describes edge-adjacent placement", () => {
+  assert.match(indexHtml, /id="relationPickHint"/);
+  assert.match(appSource, /edge-adjacent/);
+  assert.match(appSource, /orthogonally adjacent/);
+});

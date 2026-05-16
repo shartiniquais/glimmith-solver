@@ -30,6 +30,7 @@ import {
   shapePreviewViewBox
 } from "./shape-bank-ui.js";
 import { inspectorStateForSelection } from "./inspector-state.js";
+import { hasUiCandidateSource } from "./candidate-source.js";
 
 const CELL = 46;
 const SVG_PAD = 10;
@@ -520,6 +521,15 @@ function handleRelationCellClick(cell) {
   }
 
   const ruleId = el.relationRuleInput.value;
+  if (!areCellsOrthogonallyAdjacent(relationFirstCell, cell)) {
+    renderStatus(
+      `${ruleLabel(ruleId)} relation clues are edge-adjacent. Click an orthogonally adjacent cell sharing an edge with ${cellLabel(relationFirstCell, puzzle.width)}.`,
+      "warn"
+    );
+    updateRelationHint();
+    render();
+    return;
+  }
   puzzle = upsertRelationClue(ruleId, relationFirstCell, cell);
   clearComputed();
   renderStatus(`${ruleLabel(ruleId)} relation clue placed.`, "good");
@@ -717,7 +727,7 @@ function toolInfo(tool) {
     },
     relation: {
       name: "Relation pair clue",
-      description: "Click two active cells to add a relation clue between their eventual regions.",
+      description: "Click two edge-adjacent active cells to add a relation clue between their eventual regions.",
       params: `${ruleLabel(el.relationRuleInput.value)}${relationToolParameterText()}. Delete relation clues with Erase clue or the inspector.`
     },
     areaNumber: {
@@ -900,7 +910,7 @@ function renderValidation() {
     groups["Rule issues"].push("Precision needs a positive area.");
   } else if (!hasCandidateSource()) {
     groups["Solver / candidate-source issues"].push(
-      "Add Precision area, Shape Bank shapes, Area Number clues, or Polyomino clues so the solver can generate candidates."
+      "Add Precision area, Shape Bank shapes, Area Number clues, Polyomino clues, or Range bounds so the solver can generate candidates."
     );
   }
   if (puzzle.rules.shape_bank && !puzzle.shapeBank?.text?.trim() && (puzzle.shapeBank?.entries ?? []).length === 0) {
@@ -1196,7 +1206,7 @@ function upsertRelationClue(ruleId, firstCell, secondCell) {
     id: `relation:${ruleId}:${key}`,
     type: "relation",
     ruleId,
-    location: { type: "pair", cells: [firstCell, secondCell] },
+    location: { type: "edge", cells: [firstCell, secondCell] },
     regionRefs: [{ cell: firstCell }, { cell: secondCell }]
   };
   if (ruleId === "difference") {
@@ -1315,23 +1325,24 @@ function updateTraceControls() {
 
 function updateRelationHint() {
   if (currentTool !== "relation") {
-    el.relationPickHint.textContent = "Choose Relation pair clue, then click two active cells in different regions.";
+    el.relationPickHint.textContent = "Choose Relation pair clue, then click two edge-adjacent active cells.";
     return;
   }
   if (relationFirstCell === null) {
-    el.relationPickHint.textContent = `Click the first cell for a ${ruleLabel(el.relationRuleInput.value)} relation clue.`;
+    el.relationPickHint.textContent = `Click the first cell for an edge-adjacent ${ruleLabel(el.relationRuleInput.value)} relation clue.`;
     return;
   }
-  el.relationPickHint.textContent = `First cell: ${cellLabel(relationFirstCell, puzzle.width)}. Click the second cell.`;
+  el.relationPickHint.textContent = `First cell: ${cellLabel(relationFirstCell, puzzle.width)}. Click an edge-adjacent second cell.`;
 }
 
 function hasCandidateSource() {
-  return (
-    Number(puzzle.rules.precision?.area ?? puzzle.rules.area) > 0 ||
-    Boolean(puzzle.shapeBank?.text?.trim()) ||
-    (puzzle.shapeBank?.entries ?? []).length > 0 ||
-    (puzzle.clues ?? []).some((clue) => clue.ruleId === "area_number" || clue.ruleId === "polyomino")
-  );
+  return hasUiCandidateSource(puzzle);
+}
+
+function areCellsOrthogonallyAdjacent(a, b) {
+  const left = xy(a, puzzle.width);
+  const right = xy(b, puzzle.width);
+  return Math.abs(left.x - right.x) + Math.abs(left.y - right.y) === 1;
 }
 
 function hasRuleClue(ruleId) {

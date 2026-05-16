@@ -86,6 +86,52 @@ test("legacy differentShape edge relation becomes a Delta relation clue", () => 
   assert.deepEqual(clue.regionRefs, [{ cell: 0 }, { cell: 1 }]);
 });
 
+test("edge relation clues must reference orthogonally adjacent cells", () => {
+  for (const ruleId of ["gemini", "delta", "difference", "inequality"]) {
+    const clue = {
+      id: `non_adjacent_${ruleId}`,
+      type: "relation",
+      ruleId,
+      regionRefs: [{ cell: 0 }, { cell: 3 }]
+    };
+    if (ruleId === "difference") clue.value = 1;
+    if (ruleId === "inequality") clue.params = { direction: "lt" };
+
+    const result = validatePuzzle({
+      width: 2,
+      height: 2,
+      rules: { area: 2, [ruleId]: {} },
+      clues: [clue]
+    });
+
+    assert.equal(result.ok, false, `${ruleId} should reject diagonal refs`);
+    assert.match(result.errors.join("\n"), /must reference two orthogonally adjacent cells/, ruleId);
+  }
+});
+
+test("edge relation clues can use adjacent edge locations as region references", () => {
+  for (const ruleId of ["gemini", "delta", "difference", "inequality"]) {
+    const clue = {
+      id: `edge_${ruleId}`,
+      type: "relation",
+      ruleId,
+      location: { type: "edge", cells: [0, 1] }
+    };
+    if (ruleId === "difference") clue.value = 1;
+    if (ruleId === "inequality") clue.params = { direction: "lt" };
+
+    const result = validatePuzzle({
+      width: 2,
+      height: 2,
+      rules: { area: 2, [ruleId]: {} },
+      clues: [clue]
+    });
+
+    assert.doesNotMatch(result.errors.join("\n"), /must reference two orthogonally adjacent cells/, ruleId);
+    assert.doesNotMatch(result.errors.join("\n"), /must reference two region cells/, ruleId);
+  }
+});
+
 test("validation reports unknown rules, ready-unimplemented rules, invalid clues, and impossible masks", () => {
   const result = validatePuzzle({
     version: 2,

@@ -17,18 +17,18 @@
       }
     },
     {
-      "name": "gemini-opposite-corners-multiple",
+      "name": "gemini-adjacent-edge-multiple",
       "rulesCovered": ["gemini"],
       "expectedStatus": "multiple_solutions",
       "expectedSolutionLimit": 2,
       "expectedSolutionCount": 2,
-      "expectedRegionCount": 2,
+      "expectedRegionCount": 3,
       "expectedForcedSteps": [],
       "puzzle": {
-        "width": 2,
+        "width": 3,
         "height": 2,
         "clues": [
-          { "id": "gemini_0_3", "type": "relation", "ruleId": "gemini", "regionRefs": [{ "cell": 0 }, { "cell": 3 }] }
+          { "id": "gemini_0_1", "type": "relation", "ruleId": "gemini", "regionRefs": [{ "cell": 0 }, { "cell": 1 }] }
         ],
         "rules": { "area": 2, "gemini": {} }
       }

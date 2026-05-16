@@ -39,6 +39,8 @@ This prototype uses a versioned puzzle schema plus a registry of rule modules. T
 
 Legacy `sameShape` and `differentShape` edge relations are migrated into Gemini and Delta relation clues during normalization. Future relation rules should use the same two-region clue shape even when the visual clue is not placed on a simple cell edge.
 
+Game-facing Gemini, Delta, Difference, and Inequality clues are edge clues. The schema still models them as generic two-region relation clues with `regionRefs`, but validation requires those references or edge-location cells to be orthogonally adjacent.
+
 ## Rule Registry
 
 Rule modules live under `src/core/rules/`. The registry is exported from `src/core/rules/registry.js`.

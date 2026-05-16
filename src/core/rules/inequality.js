@@ -1,5 +1,5 @@
 import { hasBit } from "../geometry.js";
-import { relationReferenceCells } from "./relations.js";
+import { relationReferenceCells, validateEdgeAdjacentRelationCells } from "./relations.js";
 
 export const inequalityRule = {
   id: "inequality",
@@ -14,7 +14,9 @@ export const inequalityRule = {
   validatePuzzle(context) {
     const errors = [];
     for (const clue of inequalityClues(context)) {
-      if (!relationReferenceCells(clue)) errors.push(`Inequality clue "${clue.id}" must reference two region cells.`);
+      const refs = relationReferenceCells(clue);
+      if (!refs) errors.push(`Inequality clue "${clue.id}" must reference two region cells.`);
+      else errors.push(...validateEdgeAdjacentRelationCells(clue, refs, context, "Inequality"));
       if (!["lt", "gt"].includes(inequalityDirection(clue))) {
         errors.push(`Inequality clue "${clue.id}" requires params.direction "lt" or "gt".`);
       }

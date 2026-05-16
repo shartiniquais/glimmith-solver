@@ -24,7 +24,9 @@ export function generateCandidates(puzzle, options = {}) {
   const plan = buildCandidateGenerationPlan(puzzle, context);
   const errors = [...plan.errors];
   const raw = generateRawCandidatesForPlan(puzzle, plan, maxCandidates);
-  if (plan.kind === "missing_source") errors.push("Set a Precision area or provide a shape bank before solving.");
+  if (plan.kind === "missing_source") {
+    errors.push("Set a Precision area, provide Shape Bank shapes, place Area Number/Polyomino clues, or enable Range before solving.");
+  }
 
   const excludedMasks = new Set(puzzle.metadata?.excludedCandidateMasks ?? []);
   const filtered = [];

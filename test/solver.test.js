@@ -367,6 +367,27 @@ test("Inequality relation clues compare referenced region areas", () => {
   assert.equal(rejected.status, "no_solution");
 });
 
+test("Inequality edge-location clues compare adjacent region areas", () => {
+  const puzzle = createPuzzle(3, 1);
+  puzzle.rules.area = 0;
+  puzzle.rules.inequality = {};
+  puzzle.clues = [
+    { id: "one", type: "cell", ruleId: "area_number", value: 1, location: { type: "cell", cell: 0 } },
+    { id: "two", type: "cell", ruleId: "area_number", value: 2, location: { type: "cell", cell: 1 } },
+    {
+      id: "edge_left_less",
+      type: "relation",
+      ruleId: "inequality",
+      location: { type: "edge", cells: [0, 1] },
+      params: { direction: "lt" }
+    }
+  ];
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "unique_solution");
+  assert.deepEqual(result.solutions[0].regions.map((region) => region.cells), [[0], [1, 2]]);
+});
+
 function mirroredMinglePuzzle(mingleConfig) {
   const puzzle = mirroredShapePuzzle();
   puzzle.rules.mingle_shape = mingleConfig;

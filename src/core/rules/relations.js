@@ -1,4 +1,4 @@
-import { hasBit } from "../geometry.js";
+import { hasBit, orthogonalNeighbors } from "../geometry.js";
 import { candidateShapeForComparison } from "../shape-comparison.js";
 
 export const geminiRule = makeShapeRelationRule({
@@ -34,6 +34,7 @@ export const differenceRule = {
     for (const clue of relationClues(context, "difference")) {
       const refs = relationCells(clue);
       if (!refs) errors.push(`Difference clue "${clue.id}" must reference two region cells.`);
+      else errors.push(...validateEdgeAdjacentRelationCells(clue, refs, context, "Difference"));
       const value = Number(clue.value ?? clue.params?.difference);
       if (!Number.isInteger(value) || value < 0) {
         errors.push(`Difference clue "${clue.id}" requires a non-negative integer value.`);
@@ -75,7 +76,9 @@ function makeShapeRelationRule({ id, label, relation, isValid }) {
     validatePuzzle(context) {
       const errors = [];
       for (const clue of relationClues(context, id)) {
-        if (!relationCells(clue)) errors.push(`${label} clue "${clue.id}" must reference two region cells.`);
+        const refs = relationCells(clue);
+        if (!refs) errors.push(`${label} clue "${clue.id}" must reference two region cells.`);
+        else errors.push(...validateEdgeAdjacentRelationCells(clue, refs, context, label));
       }
       return errors;
     },
@@ -153,4 +156,10 @@ function relationCells(clue) {
 
 export function relationReferenceCells(clue) {
   return relationCells(clue);
+}
+
+export function validateEdgeAdjacentRelationCells(clue, refs, context, label) {
+  const [a, b] = refs;
+  if (orthogonalNeighbors(a, context.puzzle.width, context.puzzle.height).includes(b)) return [];
+  return [`${label} clue "${clue.id}" must reference two orthogonally adjacent cells.`];
 }
