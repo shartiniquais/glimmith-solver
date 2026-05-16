@@ -16,7 +16,7 @@ export const LEGACY_RULE_KEYS = new Set([
   "shapeEquivalenceAllowReflections"
 ]);
 
-const experimentalRules = [
+const readyUnimplementedRules = [
   ["match", "Match"],
   ["mismatch", "Mismatch"],
   ["range", "Range"],
@@ -24,10 +24,7 @@ const experimentalRules = [
   ["boxy", "Boxy"],
   ["non_boxy", "Non-Boxy"],
   ["inequality", "Inequality"],
-  ["solitude", "Solitude"]
-];
-
-const blockedRules = [
+  ["solitude", "Solitude"],
   ["palisade", "Palisade"],
   ["bricky", "Bricky"],
   ["loopy", "Loopy"],
@@ -45,8 +42,7 @@ export const RULE_REGISTRY = Object.freeze({
   area_number: areaNumberRule,
   polyomino: polyominoRule,
   mingle_shape: mingleShapeRule,
-  ...Object.fromEntries(experimentalRules.map(([id, label]) => [id, unimplementedRule(id, label, "experimental")])),
-  ...Object.fromEntries(blockedRules.map(([id, label]) => [id, unimplementedRule(id, label, "blocked")]))
+  ...Object.fromEntries(readyUnimplementedRules.map(([id, label]) => [id, unimplementedRule(id, label, "ready")]))
 });
 
 export function createRuleContext(puzzle, options = {}) {

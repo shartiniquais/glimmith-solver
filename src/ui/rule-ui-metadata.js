@@ -8,19 +8,19 @@ export const RULE_HELP = Object.freeze({
   area_number: "A cell clue forcing its region to have the shown area.",
   polyomino: "A cell clue forcing its region to match a drawn polyomino.",
   mingle_shape: "Adjacent selected regions cannot have the same shape.",
-  match: "Experimental rule with unresolved edge cases.",
-  mismatch: "Experimental rule with unresolved edge cases.",
-  range: "Experimental rule with unresolved edge cases.",
-  size_separation: "Experimental rule with unresolved edge cases.",
-  boxy: "Experimental rule with unresolved edge cases.",
-  non_boxy: "Experimental rule with unresolved edge cases.",
-  inequality: "Experimental relation rule with unresolved edge cases.",
-  solitude: "Experimental rule with unresolved edge cases.",
-  palisade: "Blocked until exact semantics are verified.",
-  bricky: "Blocked until exact semantics are verified.",
-  loopy: "Blocked until exact semantics are verified.",
-  compass: "Blocked until exact semantics are verified.",
-  watchtower: "Blocked until exact semantics are verified."
+  match: "Ready rule: every region must have the same shape; solver support is not implemented yet.",
+  mismatch: "Ready rule: every region must have a distinct shape; solver support is not implemented yet.",
+  range: "Ready rule: every region area must be inside an inclusive range; solver support is not implemented yet.",
+  size_separation: "Ready rule: edge-adjacent regions must have different areas; solver support is not implemented yet.",
+  boxy: "Ready rule: every region must be a filled rectangle; solver support is not implemented yet.",
+  non_boxy: "Ready rule: filled rectangles, bars, and single cells are forbidden; solver support is not implemented yet.",
+  inequality: "Ready relation clue: adjacent region areas must satisfy a strict inequality; solver support is not implemented yet.",
+  solitude: "Ready rule: every region must contain exactly one counted cell clue or symbol; solver support is not implemented yet.",
+  palisade: "Ready cell clue: border pattern around the clue cell; solver support is not implemented yet.",
+  bricky: "Ready boundary rule: forbids degree-4 border vertices; solver support is not implemented yet.",
+  loopy: "Ready boundary rule: forbids degree-3 border vertices; solver support is not implemented yet.",
+  compass: "Ready cell clue: counts own-region cells in N/E/S/W half-planes; solver support is not implemented yet.",
+  watchtower: "Ready vertex clue: counts distinct regions touching the clue vertex; solver support is not implemented yet."
 });
 
 export const IMPLEMENTED_RULE_VISUALS = Object.freeze({

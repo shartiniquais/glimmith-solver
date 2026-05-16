@@ -21,8 +21,6 @@ test("rule inventory records implementation status for every rule", () => {
       "mingle_shape",
       "area_number",
       "difference",
-    ],
-    experimental: [
       "match",
       "mismatch",
       "range",
@@ -31,12 +29,20 @@ test("rule inventory records implementation status for every rule", () => {
       "non_boxy",
       "inequality",
       "solitude",
+      "palisade",
+      "bricky",
+      "loopy",
+      "compass",
+      "watchtower",
     ],
-    blocked: ["palisade", "bricky", "loopy", "compass", "watchtower"],
+    experimental: [],
+    blocked: [],
   };
 
   for (const rule of inventory.rules) {
     assert.ok(rule.implementationStatus, `${rule.id} is missing implementationStatus`);
+    assert.equal(rule.implementationStatus, "ready", `${rule.id} should be ready after user confirmation`);
+    assert.equal(rule.confirmation?.basis, "user_confirmed_in_game_observation", `${rule.id} confirmation basis`);
     assert.ok(rule.sourceUrls?.length > 0, `${rule.id} is missing source URLs`);
     assert.ok(Array.isArray(rule.openQuestions), `${rule.id} is missing openQuestions`);
   }
@@ -61,6 +67,7 @@ test("rule inventory records top-level implementation policy", () => {
   assert.match(inventory.implementationPolicy.shapeComparison, /reflection/i);
   assert.match(inventory.implementationPolicy.relationClues, /constraints between two regions/i);
   assert.match(inventory.implementationPolicy.relationClues, /not as simple edge states only/i);
+  assert.equal(inventory.implementationPolicy.readyUnimplementedRuleSolverBehavior, "reject_known_ready_not_implemented");
 });
 
 test("every inventory rule id is represented in RULE_REGISTRY", () => {
@@ -74,6 +81,8 @@ test("every inventory rule id is represented in RULE_REGISTRY", () => {
 test("ready rules expose rule-engine implementation constraints", () => {
   const shapeBank = byId.get("shape_bank");
   assert.equal(shapeBank.implementationModel.shapeUsePolicy, "reusable_allowed_shape_set");
+  assert.equal(shapeBank.implementationModel.unlimitedReuse, true);
+  assert.equal(shapeBank.implementationModel.listedShapeMayBeUnused, true);
   assert.deepEqual(shapeBank.implementationModel.optionalFutureFields, ["exactUses", "maxUses"]);
   assert.equal(shapeBank.implementationModel.enforceUseLimitsOnlyWhenSupplied, true);
 
@@ -81,15 +90,50 @@ test("ready rules expose rule-engine implementation constraints", () => {
   assert.equal(roseWindow.implementationModel.requiredSymbolCounts, "map_symbol_id_to_required_count");
   assert.equal(roseWindow.implementationModel.notHardCodedToOneSymbolFamily, true);
 
-  for (const id of ["shape_bank", "gemini", "delta", "polyomino", "mingle_shape"]) {
+  for (const id of ["shape_bank", "gemini", "delta", "polyomino", "mingle_shape", "match", "mismatch"]) {
     const rule = byId.get(id);
-    assert.equal(rule.shapeComparison.allowRotations, "configurable", `${id} rotations`);
-    assert.equal(rule.shapeComparison.allowReflections, "configurable", `${id} reflections`);
+    assert.equal(rule.shapeComparison.allowRotations, true, `${id} rotations`);
+    assert.equal(rule.shapeComparison.allowReflections, true, `${id} reflections`);
   }
 
-  for (const id of ["gemini", "delta", "difference"]) {
+  for (const id of ["gemini", "delta", "difference", "inequality"]) {
     const rule = byId.get(id);
-    assert.equal(rule.relationModel.kind, "two_region_relation_clue", `${id} relation kind`);
+    assert.match(rule.relationModel.kind, /two_region_relation_clue/, `${id} relation kind`);
     assert.equal(rule.relationModel.notSimpleEdgeStateOnly, true, `${id} relation scope`);
   }
+});
+
+test("implemented flags separate solver support from ready mechanics", () => {
+  const implemented = inventory.rules.filter((rule) => rule.implemented).map((rule) => rule.id).sort();
+  assert.deepEqual(implemented, [
+    "area_number",
+    "delta",
+    "difference",
+    "gemini",
+    "mingle_shape",
+    "polyomino",
+    "precision",
+    "rose_window",
+    "shape_bank",
+  ]);
+
+  const readyNotImplemented = inventory.rules
+    .filter((rule) => rule.implementationStatus === "ready" && !rule.implemented)
+    .map((rule) => rule.id)
+    .sort();
+  assert.deepEqual(readyNotImplemented, [
+    "boxy",
+    "bricky",
+    "compass",
+    "inequality",
+    "loopy",
+    "match",
+    "mismatch",
+    "non_boxy",
+    "palisade",
+    "range",
+    "size_separation",
+    "solitude",
+    "watchtower",
+  ]);
 });

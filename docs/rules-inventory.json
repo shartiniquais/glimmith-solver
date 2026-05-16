@@ -1,28 +1,40 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "updated": "2026-05-16",
   "subject": "The Artisan of Glimmith rule inventory",
   "implementationStatusLegend": {
-    "ready": "Mechanics are verified enough to implement now.",
+    "ready": "Mechanics are verified enough to implement now; ready does not imply solver support is already implemented.",
     "experimental": "Mechanics are likely, but unresolved edge cases remain.",
     "blocked": "Exact semantics are not verified enough for faithful solving."
   },
   "implementationPolicy": {
     "blockedRuleSolverBehavior": "reject_not_implemented_semantics_unverified",
     "blockedRuleUiPolicy": "placeholder_only_if_useful",
-    "shapeComparison": "Support configurable rotation and reflection equivalence.",
-    "relationClues": "Model relation clues as constraints between two regions, not as simple edge states only."
+    "shapeComparison": "Support configurable rotation/reflection equivalence; confirmed shape-comparison rules count rotations and reflections as the same shape.",
+    "relationClues": "Model relation clues as constraints between two regions, not as simple edge states only; confirmed relation clues are edge/vertex/cell clues that reference adjacent or touching regions as specified.",
+    "readyUnimplementedRuleSolverBehavior": "reject_known_ready_not_implemented"
   },
   "rules": [
     {
       "id": "precision",
       "canonicalName": "Precision",
       "implementationStatus": "ready",
-      "alternateNames": ["Exact area", "No More No Less"],
-      "meaning": "Every region must contain exactly the configured number of cells.",
-      "scope": ["one_region", "all_regions", "numbers"],
-      "visualEditorInput": ["global_area_integer"],
-      "solverEncoding": ["candidate_filter"],
+      "alternateNames": [
+        "Exact area",
+        "No More No Less"
+      ],
+      "meaning": "Global rule: every region must have area exactly N. Only one Precision rule can be active at a time; this is distinct from Area Number cell clues.",
+      "scope": [
+        "global_rule",
+        "all_regions",
+        "numbers"
+      ],
+      "visualEditorInput": [
+        "single_global_area_integer"
+      ],
+      "solverEncoding": [
+        "candidate_filter"
+      ],
       "rotationsReflections": "not_relevant",
       "localCandidateElimination": "yes",
       "testPuzzleIdea": "Use a 2 by 3 board where only two triomino regions satisfy precision = 3.",
@@ -31,25 +43,62 @@
         "https://steamcommunity.com/stats/4160210/achievements"
       ],
       "confidence": "high",
-      "openQuestions": []
+      "openQuestions": [],
+      "implementationModel": {
+        "globalRule": true,
+        "singleActiveRule": true,
+        "distinctFromAreaNumber": true
+      },
+      "confirmedMechanics": [
+        "Global rule.",
+        "Every region must have area exactly N.",
+        "Only one Precision rule can be active at a time.",
+        "Do not confuse Precision with Area Number clues."
+      ],
+      "implemented": true,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "shape_bank",
       "canonicalName": "Shape Bank",
       "implementationStatus": "ready",
-      "alternateNames": ["Allowed shapes", "Bank"],
-      "meaning": "Every region must match one of the displayed allowed shapes.",
-      "scope": ["shape_bank", "all_regions", "shapes"],
-      "visualEditorInput": ["allowed_polyominoes", "allow_rotations", "allow_reflections"],
-      "solverEncoding": ["candidate_filter", "optional_shape_use_cardinality"],
-      "rotationsReflections": "yes_per_puzzle",
+      "alternateNames": [
+        "Allowed shapes",
+        "Bank"
+      ],
+      "meaning": "Global rule: every region must match one shape from the displayed shape list. Shapes are reusable unlimited times and may be unused; rotations and reflections are allowed.",
+      "scope": [
+        "global_rule",
+        "shape_bank",
+        "all_regions",
+        "shapes"
+      ],
+      "visualEditorInput": [
+        "displayed_shape_list",
+        "allow_rotations",
+        "allow_reflections"
+      ],
+      "solverEncoding": [
+        "candidate_filter"
+      ],
+      "rotationsReflections": "rotations_and_reflections_allowed",
       "shapeComparison": {
-        "allowRotations": "configurable",
-        "allowReflections": "configurable"
+        "allowRotations": true,
+        "allowReflections": true,
+        "configurableInPrototype": true
       },
       "implementationModel": {
         "shapeUsePolicy": "reusable_allowed_shape_set",
-        "optionalFutureFields": ["exactUses", "maxUses"],
+        "listedShapeMayBeUnused": true,
+        "unlimitedReuse": true,
+        "optionalFutureFields": [
+          "exactUses",
+          "maxUses"
+        ],
         "enforceUseLimitsOnlyWhenSupplied": true
       },
       "localCandidateElimination": "yes",
@@ -60,22 +109,49 @@
         "https://camzillasmom.com/the-artisan-of-glimmith-mingle-shape-window-puzzle-solutions/"
       ],
       "confidence": "high",
-      "openQuestions": [
-        "Confirm whether bank entries can be reused unlimited times or whether some puzzles limit each listed shape to one use."
-      ]
+      "openQuestions": [],
+      "confirmedMechanics": [
+        "Global rule.",
+        "Every region must match one shape from the displayed shape list.",
+        "Shapes are reusable unlimited times.",
+        "A listed shape may be used zero times.",
+        "Rotations and reflections are allowed."
+      ],
+      "implemented": true,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "rose_window",
       "canonicalName": "Rose Windows",
       "implementationStatus": "ready",
-      "alternateNames": ["Rose Window", "One of each symbol"],
-      "meaning": "Every region must contain exactly one of each symbol type used by the rule.",
-      "scope": ["symbols_inside_regions", "all_regions"],
-      "visualEditorInput": ["symbol_grid", "required_symbol_counts"],
-      "solverEncoding": ["candidate_filter", "symbol_count_constraint"],
+      "alternateNames": [
+        "Rose Window",
+        "One of each symbol"
+      ],
+      "meaning": "Every region needs exactly one of each listed Rose symbol and no extra Rose symbols. Multiple symbol families/colors are not distinct for solver purposes.",
+      "scope": [
+        "global_rule",
+        "symbols_inside_regions",
+        "all_regions"
+      ],
+      "visualEditorInput": [
+        "rose_symbol_grid",
+        "listed_rose_symbols"
+      ],
+      "solverEncoding": [
+        "candidate_filter",
+        "symbol_count_constraint"
+      ],
       "rotationsReflections": "not_relevant",
       "implementationModel": {
         "requiredSymbolCounts": "map_symbol_id_to_required_count",
+        "exactlyOneOfEachListedSymbol": true,
+        "noExtraRoseSymbols": true,
+        "multipleSymbolFamiliesForSolver": false,
         "notHardCodedToOneSymbolFamily": true
       },
       "localCandidateElimination": "yes",
@@ -86,26 +162,49 @@
         "https://steamcommunity.com/stats/4160210/achievements"
       ],
       "confidence": "high",
-      "openQuestions": [
-        "Confirm behavior when multiple symbol families appear in one puzzle."
-      ]
+      "openQuestions": [],
+      "confirmedMechanics": [
+        "Every region needs exactly one of each listed Rose symbol.",
+        "No extra Rose symbols in a region.",
+        "No multiple symbol families/colors for solver purposes."
+      ],
+      "implemented": true,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "gemini",
       "canonicalName": "Gemini",
       "implementationStatus": "ready",
-      "alternateNames": ["Same-shape edge clue"],
-      "meaning": "The two regions touching the clue must have the same shape.",
-      "scope": ["two_adjacent_regions", "shapes", "clue_edges_or_vertices"],
-      "visualEditorInput": ["same_shape_relation_marker", "allow_rotations", "allow_reflections"],
-      "solverEncoding": ["pairwise_candidate_compatibility"],
-      "rotationsReflections": "yes_per_puzzle",
+      "alternateNames": [
+        "Same-shape edge clue"
+      ],
+      "meaning": "Edge relation clue: compares the two regions on opposite sides of the edge and requires them to have the same shape. The same region cannot be on both sides; rotations and reflections count as the same shape.",
+      "scope": [
+        "edge_relation_clue",
+        "two_adjacent_regions",
+        "shapes"
+      ],
+      "visualEditorInput": [
+        "same_shape_edge_relation_marker"
+      ],
+      "solverEncoding": [
+        "pairwise_candidate_compatibility"
+      ],
+      "rotationsReflections": "rotations_and_reflections_count_same",
       "shapeComparison": {
-        "allowRotations": "configurable",
-        "allowReflections": "configurable"
+        "allowRotations": true,
+        "allowReflections": true,
+        "configurableInPrototype": true
       },
       "relationModel": {
-        "kind": "two_region_relation_clue",
+        "kind": "edge_two_region_relation_clue",
+        "adjacentOnly": true,
+        "oppositeSidesOfEdge": true,
+        "sameRegionInvalid": true,
         "notSimpleEdgeStateOnly": true
       },
       "localCandidateElimination": "partial",
@@ -115,26 +214,50 @@
         "https://camzillasmom.com/the-artisan-of-glimmith-precision-window-puzzle-solutions/"
       ],
       "confidence": "high",
-      "openQuestions": [
-        "Confirm whether reflections are always accepted or controlled by per-puzzle shape equivalence."
-      ]
+      "openQuestions": [],
+      "confirmedMechanics": [
+        "Edge relation clue.",
+        "Compares the two regions on opposite sides of the edge.",
+        "The same region cannot be on both sides of the edge.",
+        "Rotations and reflections count as the same shape."
+      ],
+      "implemented": true,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "delta",
       "canonicalName": "Delta",
       "implementationStatus": "ready",
-      "alternateNames": ["Different-shape edge clue"],
-      "meaning": "The two regions touching the clue must have different shapes.",
-      "scope": ["two_adjacent_regions", "shapes", "clue_edges_or_vertices"],
-      "visualEditorInput": ["different_shape_relation_marker", "allow_rotations", "allow_reflections"],
-      "solverEncoding": ["pairwise_candidate_incompatibility"],
-      "rotationsReflections": "yes_per_puzzle",
+      "alternateNames": [
+        "Different-shape edge clue"
+      ],
+      "meaning": "Edge relation clue: current interpretation is that the two regions on opposite sides of the edge must have different shapes. The same region cannot be on both sides; rotations and reflections count as the same shape.",
+      "scope": [
+        "edge_relation_clue",
+        "two_adjacent_regions",
+        "shapes"
+      ],
+      "visualEditorInput": [
+        "different_shape_edge_relation_marker"
+      ],
+      "solverEncoding": [
+        "pairwise_candidate_incompatibility"
+      ],
+      "rotationsReflections": "rotations_and_reflections_count_same",
       "shapeComparison": {
-        "allowRotations": "configurable",
-        "allowReflections": "configurable"
+        "allowRotations": true,
+        "allowReflections": true,
+        "configurableInPrototype": true
       },
       "relationModel": {
-        "kind": "two_region_relation_clue",
+        "kind": "edge_two_region_relation_clue",
+        "adjacentOnly": true,
+        "oppositeSidesOfEdge": true,
+        "sameRegionInvalid": true,
         "notSimpleEdgeStateOnly": true
       },
       "localCandidateElimination": "partial",
@@ -144,23 +267,44 @@
         "https://camzillasmom.com/the-artisan-of-glimmith-precision-window-puzzle-solutions/"
       ],
       "confidence": "high",
-      "openQuestions": [
-        "Confirm whether reflections are always accepted or controlled by per-puzzle shape equivalence."
-      ]
+      "openQuestions": [],
+      "confirmedMechanics": [
+        "Keep current interpretation as different-shape edge relation unless explicitly corrected.",
+        "Edge relation clue.",
+        "The same region cannot be on both sides of the edge.",
+        "Rotations and reflections count as the same shape."
+      ],
+      "implemented": true,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "polyomino",
       "canonicalName": "Polyomino",
       "implementationStatus": "ready",
-      "alternateNames": ["Required shape clue"],
-      "meaning": "A region containing a shape clue must have that clue's shape; early puzzles may imply monominoes without showing them.",
-      "scope": ["one_region", "clue_cells", "shapes"],
-      "visualEditorInput": ["shape_clue_cells", "allow_rotations", "allow_reflections"],
-      "solverEncoding": ["candidate_filter"],
-      "rotationsReflections": "yes_per_clue_or_puzzle",
+      "alternateNames": [
+        "Required shape clue"
+      ],
+      "meaning": "Cell clue: the region containing the clue must match the clue shape. Multiple same-shape Polyomino clues may share a region, but different Polyomino shapes cannot share a region. Drawn orientation does not matter because rotations and reflections are allowed.",
+      "scope": [
+        "cell_clue",
+        "one_region",
+        "shapes"
+      ],
+      "visualEditorInput": [
+        "shape_clue_cells"
+      ],
+      "solverEncoding": [
+        "candidate_filter"
+      ],
+      "rotationsReflections": "rotations_and_reflections_allowed",
       "shapeComparison": {
-        "allowRotations": "configurable",
-        "allowReflections": "configurable"
+        "allowRotations": true,
+        "allowReflections": true,
+        "configurableInPrototype": true
       },
       "localCandidateElimination": "yes",
       "testPuzzleIdea": "A region containing an L-triomino clue should reject straight-triomino candidates.",
@@ -169,23 +313,52 @@
         "https://camzillasmom.com/the-artisan-of-glimmith-forest-entrance-window-puzzle-solutions/"
       ],
       "confidence": "high",
-      "openQuestions": [
-        "Confirm behavior when multiple shape clues land in the same region."
-      ]
+      "openQuestions": [],
+      "implementationModel": {
+        "multipleSameShapeCluesAllowedInOneRegion": true,
+        "differentShapeCluesForbiddenInOneRegion": true,
+        "drawnOrientationMatters": false
+      },
+      "confirmedMechanics": [
+        "Cell clue.",
+        "Region containing the clue must match the clue shape.",
+        "If multiple Polyomino clues of the same shape are in one region, that is okay.",
+        "A region cannot contain two different Polyomino clue shapes.",
+        "Polyomino clues may be rotated and reflected.",
+        "Drawn orientation does not matter."
+      ],
+      "implemented": true,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "mingle_shape",
       "canonicalName": "Mingle Shape",
       "implementationStatus": "ready",
-      "alternateNames": ["Neighboring regions different shapes"],
-      "meaning": "Neighboring regions must have different shapes.",
-      "scope": ["two_adjacent_regions", "all_regions", "shapes"],
-      "visualEditorInput": ["global_rule_toggle", "allow_rotations", "allow_reflections"],
-      "solverEncoding": ["pairwise_candidate_incompatibility"],
-      "rotationsReflections": "yes_per_puzzle",
+      "alternateNames": [
+        "Neighboring regions different shapes"
+      ],
+      "meaning": "Global rule: edge-adjacent regions must not have the same shape. Corner-touching does not count. Rotations and reflections count as the same shape.",
+      "scope": [
+        "global_rule",
+        "two_adjacent_regions",
+        "all_regions",
+        "shapes"
+      ],
+      "visualEditorInput": [
+        "global_rule_toggle"
+      ],
+      "solverEncoding": [
+        "pairwise_candidate_incompatibility"
+      ],
+      "rotationsReflections": "rotations_and_reflections_count_same",
       "shapeComparison": {
-        "allowRotations": "configurable",
-        "allowReflections": "configurable"
+        "allowRotations": true,
+        "allowReflections": true,
+        "configurableInPrototype": true
       },
       "localCandidateElimination": "partial",
       "testPuzzleIdea": "Reject two edge-adjacent regions with the same tetromino while allowing non-adjacent duplicates.",
@@ -194,19 +367,44 @@
         "https://camzillasmom.com/the-artisan-of-glimmith-forest-entrance-window-puzzle-solutions/"
       ],
       "confidence": "high",
-      "openQuestions": [
-        "Confirm whether corner-only contact counts as neighboring."
-      ]
+      "openQuestions": [],
+      "implementationModel": {
+        "adjacency": "orthogonal_edge_only",
+        "cornerTouchingCounts": false
+      },
+      "confirmedMechanics": [
+        "Global rule.",
+        "Edge-adjacent regions must not have the same shape.",
+        "Corner-touching does not count.",
+        "Rotations/reflections count as the same shape."
+      ],
+      "implemented": true,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "area_number",
       "canonicalName": "Area Number",
       "implementationStatus": "ready",
-      "alternateNames": ["Number clue", "Area clue"],
-      "meaning": "A number inside a region indicates the number of cells in that region.",
-      "scope": ["one_region", "clue_cells", "numbers"],
-      "visualEditorInput": ["number_clue_cells"],
-      "solverEncoding": ["candidate_filter"],
+      "alternateNames": [
+        "Number clue",
+        "Area clue"
+      ],
+      "meaning": "Cell clue: a region containing an Area Number clue must have that area. Multiple Area Number clues in one region must agree. Values are positive integers only.",
+      "scope": [
+        "cell_clue",
+        "one_region",
+        "numbers"
+      ],
+      "visualEditorInput": [
+        "positive_integer_number_clue_cells"
+      ],
+      "solverEncoding": [
+        "candidate_filter"
+      ],
       "rotationsReflections": "not_relevant",
       "localCandidateElimination": "yes",
       "testPuzzleIdea": "Reject candidates containing a number 4 clue unless their area is exactly 4.",
@@ -215,23 +413,57 @@
         "https://steamcommunity.com/stats/4160210/achievements"
       ],
       "confidence": "high",
-      "openQuestions": [
-        "Confirm behavior for multiple area numbers inside one region."
-      ]
+      "openQuestions": [],
+      "implementationModel": {
+        "multipleCluesInOneRegionMustAgree": true,
+        "positiveIntegersOnly": true,
+        "distinctFromPrecision": true
+      },
+      "confirmedMechanics": [
+        "Cell clue.",
+        "A region containing an Area Number clue must have that area.",
+        "If a region contains multiple Area Number clues, they must agree.",
+        "Values are positive integers only."
+      ],
+      "implemented": true,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "palisade",
       "canonicalName": "Palisade",
-      "implementationStatus": "blocked",
-      "alternateNames": ["Wall-pattern clue", "Fence clue"],
-      "meaning": "A clue prescribes a local border pattern around a clue cell, with variants such as straight, corner, end, dot, or cross.",
-      "scope": ["edges_or_walls", "clue_cells", "clue_vertices"],
-      "visualEditorInput": ["palisade_clue_type", "orientation"],
-      "solverEncoding": ["blocked_until_semantics_verified"],
-      "rotationsReflections": "rotations_matter_for_oriented_clues",
+      "implementationStatus": "ready",
+      "alternateNames": [
+        "Wall-pattern clue",
+        "Fence clue"
+      ],
+      "meaning": "Cell clue: describes which sides around the clue cell are borders. Icon rotation does not matter. Types are empty, one_sided, corner, opposite, three_sided, and full.",
+      "scope": [
+        "cell_clue",
+        "edges_or_walls",
+        "local_border_pattern"
+      ],
+      "visualEditorInput": [
+        "palisade_clue_type"
+      ],
+      "solverEncoding": [
+        "candidate_filter",
+        "local_border_pattern_constraint"
+      ],
+      "rotationsReflections": "icon_rotation_does_not_matter",
       "implementationModel": {
-        "solverBehavior": "reject_not_implemented_semantics_unverified",
-        "uiPlaceholderOnly": true
+        "localCandidateOrBorderPatternRule": true,
+        "clueTypes": {
+          "empty": "exactly_0_border_sides",
+          "one_sided": "exactly_1_border_side",
+          "corner": "exactly_2_adjacent_border_sides",
+          "opposite": "exactly_2_opposite_border_sides",
+          "three_sided": "exactly_3_border_sides",
+          "full": "exactly_4_border_sides_lonely_cell"
+        }
       },
       "localCandidateElimination": "partial",
       "testPuzzleIdea": "Reject a partition around a cross-style clue unless all four required adjacent walls are present.",
@@ -240,27 +472,55 @@
         "https://steamcommunity.com/app/4160210/discussions/search/?q=Palisade",
         "https://steamdb.info/patchnotes/22658641/"
       ],
-      "confidence": "medium",
-      "openQuestions": [
-        "Capture exact icon taxonomy and orientation rules from the in-game editor or tutorial."
-      ]
+      "confidence": "high",
+      "openQuestions": [],
+      "confirmedMechanics": [
+        "Cell clue.",
+        "Describes which sides around the clue cell are borders.",
+        "Rotation of the icon does not matter.",
+        "empty: 0 border sides around the clue cell.",
+        "one_sided: exactly 1 border side.",
+        "corner: exactly 2 adjacent border sides.",
+        "opposite: exactly 2 opposite border sides.",
+        "three_sided: exactly 3 border sides.",
+        "full: exactly 4 border sides, a lonely cell.",
+        "This is a local candidate/border-pattern rule."
+      ],
+      "implemented": false,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "match",
       "canonicalName": "Match",
-      "implementationStatus": "experimental",
-      "alternateNames": ["Uniformity", "Same shape globally"],
-      "meaning": "Regions in the puzzle, or in a marked group, must share the same shape.",
-      "scope": ["all_regions", "shapes"],
-      "visualEditorInput": ["group_rule", "allow_rotations", "allow_reflections"],
-      "solverEncoding": ["global_all_same_shape_constraint"],
-      "rotationsReflections": "yes_isometry_matters",
+      "implementationStatus": "ready",
+      "alternateNames": [
+        "Uniformity",
+        "Same shape globally"
+      ],
+      "meaning": "Global rule: all regions in the puzzle must have the same shape. There are no groups/subsets. Rotations and reflections count as the same shape.",
+      "scope": [
+        "global_rule",
+        "all_regions",
+        "shapes"
+      ],
+      "visualEditorInput": [
+        "global_rule_toggle"
+      ],
+      "solverEncoding": [
+        "global_all_same_shape_constraint"
+      ],
+      "rotationsReflections": "rotations_and_reflections_count_same",
       "shapeComparison": {
-        "allowRotations": "configurable",
-        "allowReflections": "configurable"
+        "allowRotations": true,
+        "allowReflections": true,
+        "groupsSupported": false
       },
       "groupModel": {
-        "groupField": "group",
+        "supported": false,
         "defaultGroup": "global"
       },
       "localCandidateElimination": "no",
@@ -271,26 +531,48 @@
         "https://steamcommunity.com/stats/4160210/achievements"
       ],
       "confidence": "high",
-      "openQuestions": [
-        "Confirm whether Match can apply to subsets/groups or always applies to every region."
-      ]
+      "openQuestions": [],
+      "confirmedMechanics": [
+        "Global rule.",
+        "All regions in the puzzle must have the same shape.",
+        "No groups/subsets.",
+        "Rotations/reflections count as the same shape."
+      ],
+      "implemented": false,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "mismatch",
       "canonicalName": "Mismatch",
-      "implementationStatus": "experimental",
-      "alternateNames": ["Uniqueness", "All different shapes"],
-      "meaning": "Regions must have distinct shapes under the active shape-equivalence settings.",
-      "scope": ["all_regions", "shapes"],
-      "visualEditorInput": ["group_rule", "allow_rotations", "allow_reflections"],
-      "solverEncoding": ["global_all_different_shape_constraint"],
-      "rotationsReflections": "yes_per_puzzle",
+      "implementationStatus": "ready",
+      "alternateNames": [
+        "Uniqueness",
+        "All different shapes"
+      ],
+      "meaning": "Global rule: all regions in the puzzle must have distinct shapes. Rotations and reflections count as the same shape.",
+      "scope": [
+        "global_rule",
+        "all_regions",
+        "shapes"
+      ],
+      "visualEditorInput": [
+        "global_rule_toggle"
+      ],
+      "solverEncoding": [
+        "global_all_different_shape_constraint"
+      ],
+      "rotationsReflections": "rotations_and_reflections_count_same",
       "shapeComparison": {
-        "allowRotations": "configurable",
-        "allowReflections": "configurable"
+        "allowRotations": true,
+        "allowReflections": true,
+        "groupsSupported": false
       },
       "groupModel": {
-        "groupField": "group",
+        "supported": false,
         "defaultGroup": "global"
       },
       "localCandidateElimination": "no",
@@ -300,20 +582,40 @@
         "https://steamcommunity.com/app/4160210/reviews/?browsefilter=toprated",
         "https://steamcommunity.com/stats/4160210/achievements"
       ],
-      "confidence": "medium",
-      "openQuestions": [
-        "Confirm whether distinctness is global across all sizes or grouped by area/region class."
-      ]
+      "confidence": "high",
+      "openQuestions": [],
+      "confirmedMechanics": [
+        "Global rule.",
+        "All regions in the puzzle must have distinct shapes.",
+        "Rotations/reflections count as the same shape."
+      ],
+      "implemented": false,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "range",
       "canonicalName": "Range",
-      "implementationStatus": "experimental",
-      "alternateNames": ["Area range"],
-      "meaning": "Every region's area must fall within an inclusive minimum and maximum range.",
-      "scope": ["one_region", "all_regions", "numbers"],
-      "visualEditorInput": ["minimum_area", "maximum_area"],
-      "solverEncoding": ["candidate_filter"],
+      "implementationStatus": "ready",
+      "alternateNames": [
+        "Area range"
+      ],
+      "meaning": "Global rule: every region area must be within an inclusive range. It supports min-only, max-only, or min+max; complex disjoint ranges are not part of the mechanic.",
+      "scope": [
+        "global_rule",
+        "all_regions",
+        "numbers"
+      ],
+      "visualEditorInput": [
+        "optional_minimum_area",
+        "optional_maximum_area"
+      ],
+      "solverEncoding": [
+        "candidate_filter"
+      ],
       "rotationsReflections": "not_relevant",
       "localCandidateElimination": "yes",
       "testPuzzleIdea": "With range 2..3, reject monomino and tetromino candidates.",
@@ -321,20 +623,49 @@
         "https://steamcommunity.com/stats/4160210/achievements",
         "https://steamcommunity.com/app/4160210/discussions/search/?q=Range"
       ],
-      "confidence": "medium",
-      "openQuestions": [
-        "Verify inclusivity and whether ranges are always global."
-      ]
+      "confidence": "high",
+      "openQuestions": [],
+      "implementationModel": {
+        "inclusive": true,
+        "supportsMinOnly": true,
+        "supportsMaxOnly": true,
+        "supportsMinAndMax": true,
+        "supportsDisjointRanges": false
+      },
+      "confirmedMechanics": [
+        "Global rule.",
+        "Every region area must be in an inclusive range.",
+        "Supports min-only, max-only, or min+max.",
+        "No complex disjoint ranges."
+      ],
+      "implemented": false,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "solitude",
       "canonicalName": "Solitude",
-      "implementationStatus": "experimental",
-      "alternateNames": ["Lonely Island", "One clue per region"],
-      "meaning": "Each region appears to contain exactly one clue or symbol, but exact wording still needs verification.",
-      "scope": ["symbols_inside_regions", "clue_cells"],
-      "visualEditorInput": ["counted_clue_or_symbol_cells"],
-      "solverEncoding": ["candidate_filter", "optional_exact_cover_clue_constraint"],
+      "implementationStatus": "ready",
+      "alternateNames": [
+        "Lonely Island",
+        "One clue per region"
+      ],
+      "meaning": "Global rule: every region must contain exactly one counted cell symbol or clue. Counted things are cell-based clues/symbols; Rose Windows count only when the Rose rule has a single symbol type. Global rule cards do not count.",
+      "scope": [
+        "global_rule",
+        "symbols_inside_regions",
+        "cell_clues"
+      ],
+      "visualEditorInput": [
+        "counted_cell_clue_or_symbol_set"
+      ],
+      "solverEncoding": [
+        "candidate_filter",
+        "exactly_one_counted_cell_constraint"
+      ],
       "rotationsReflections": "not_relevant",
       "localCandidateElimination": "yes",
       "testPuzzleIdea": "Reject a candidate region containing zero counted clues or two counted clues if the rule is exactly-one.",
@@ -343,21 +674,54 @@
         "https://steamcommunity.com/app/4160210/discussions/search/?q=Solitude",
         "https://steamcommunity.com/app/4160210/discussions/0/796715232585227442/"
       ],
-      "confidence": "medium",
-      "openQuestions": [
-        "Verify exactly one vs at most one.",
-        "Verify whether all clue types count or only Solitude symbols."
-      ]
+      "confidence": "high",
+      "openQuestions": [],
+      "implementationModel": {
+        "exactlyOneCountedCellThingPerRegion": true,
+        "countedThings": [
+          "area_number",
+          "palisade",
+          "polyomino",
+          "compass",
+          "watchtower",
+          "cell_symbols"
+        ],
+        "roseCountsOnlyWhenSingleSymbolType": true,
+        "globalRuleCardsCount": false
+      },
+      "confirmedMechanics": [
+        "Global rule.",
+        "Every region must contain exactly one counted cell symbol/clue.",
+        "Counted things are cell-based clues/symbols, e.g. Area Number, Palisade, Polyomino, Compass, Watchtower if represented on a cell/vertex as appropriate.",
+        "Rose Windows can count only when the Rose rule has a single symbol type.",
+        "Global rule cards do not count."
+      ],
+      "implemented": false,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "size_separation",
       "canonicalName": "Size Separation",
-      "implementationStatus": "experimental",
-      "alternateNames": ["Different neighboring sizes"],
-      "meaning": "Neighboring regions must have different areas.",
-      "scope": ["two_adjacent_regions", "numbers"],
-      "visualEditorInput": ["global_rule_toggle"],
-      "solverEncoding": ["pairwise_candidate_incompatibility"],
+      "implementationStatus": "ready",
+      "alternateNames": [
+        "Different neighboring sizes"
+      ],
+      "meaning": "Global rule: edge-adjacent regions must have different areas. Corner-touching does not count.",
+      "scope": [
+        "global_rule",
+        "two_adjacent_regions",
+        "numbers"
+      ],
+      "visualEditorInput": [
+        "global_rule_toggle"
+      ],
+      "solverEncoding": [
+        "pairwise_candidate_incompatibility"
+      ],
       "rotationsReflections": "not_relevant",
       "localCandidateElimination": "partial",
       "testPuzzleIdea": "Reject adjacent regions of areas 3 and 3 while allowing 3 and 4.",
@@ -365,41 +729,91 @@
         "https://steamcommunity.com/stats/4160210/achievements",
         "https://steamcommunity.com/app/4160210/discussions/search/?q=Size%20Separation"
       ],
-      "confidence": "medium",
-      "openQuestions": [
-        "Confirm whether same-size non-adjacent regions may repeat."
-      ]
+      "confidence": "high",
+      "openQuestions": [],
+      "implementationModel": {
+        "adjacency": "orthogonal_edge_only",
+        "cornerTouchingCounts": false
+      },
+      "confirmedMechanics": [
+        "Global rule.",
+        "Edge-adjacent regions must have different areas.",
+        "Corner-touching does not count."
+      ],
+      "implemented": false,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "boxy",
       "canonicalName": "Boxy",
-      "implementationStatus": "experimental",
-      "alternateNames": ["Rectangles"],
-      "meaning": "Regions must be rectangular boxes.",
-      "scope": ["one_region", "shapes"],
-      "visualEditorInput": ["global_rule_toggle", "optional_allowed_dimensions"],
-      "solverEncoding": ["candidate_filter"],
-      "rotationsReflections": "rectangle_dimensions_collapse_rotations",
+      "implementationStatus": "ready",
+      "alternateNames": [
+        "Rectangles"
+      ],
+      "meaning": "Global rule: every region must be a filled rectangle. 1xN bars and single cells count as boxy; holes are not allowed.",
+      "scope": [
+        "global_rule",
+        "one_region",
+        "shapes"
+      ],
+      "visualEditorInput": [
+        "global_rule_toggle"
+      ],
+      "solverEncoding": [
+        "candidate_filter"
+      ],
+      "rotationsReflections": "not_relevant_beyond_rectangle_detection",
       "localCandidateElimination": "yes",
       "testPuzzleIdea": "Keep a 2 by 3 rectangle candidate and reject a bent six-cell candidate.",
       "sourceUrls": [
         "https://steamcommunity.com/app/4160210/discussions/0/841752762653913411/",
         "https://steamcommunity.com/stats/4160210/achievements"
       ],
-      "confidence": "medium",
-      "openQuestions": [
-        "Verify whether 1 by N lines and monominoes count as Boxy."
-      ]
+      "confidence": "high",
+      "openQuestions": [],
+      "implementationModel": {
+        "filledRectangleRequired": true,
+        "barsCountAsBoxy": true,
+        "singleCellCountsAsBoxy": true,
+        "holesAllowed": false
+      },
+      "confirmedMechanics": [
+        "Global rule.",
+        "Every region must be a filled rectangle.",
+        "1xN bars count as boxy.",
+        "A single cell counts as boxy.",
+        "No holes."
+      ],
+      "implemented": false,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "non_boxy",
       "canonicalName": "Non-Boxy",
-      "implementationStatus": "experimental",
-      "alternateNames": ["Not rectangles"],
-      "meaning": "Regions must not be rectangular boxes.",
-      "scope": ["one_region", "shapes"],
-      "visualEditorInput": ["global_rule_toggle"],
-      "solverEncoding": ["candidate_filter"],
+      "implementationStatus": "ready",
+      "alternateNames": [
+        "Not rectangles"
+      ],
+      "meaning": "Global rule: opposite of Boxy. Filled rectangles, bars, and single cells are forbidden. It can coexist with Shape Bank.",
+      "scope": [
+        "global_rule",
+        "one_region",
+        "shapes"
+      ],
+      "visualEditorInput": [
+        "global_rule_toggle"
+      ],
+      "solverEncoding": [
+        "candidate_filter"
+      ],
       "rotationsReflections": "not_relevant_beyond_rectangle_detection",
       "localCandidateElimination": "yes",
       "testPuzzleIdea": "Reject a 2 by 2 square and allow an L-tetromino.",
@@ -407,24 +821,52 @@
         "https://steamcommunity.com/stats/4160210/achievements",
         "https://gamefaqs.gamespot.com/pc/607835-the-artisan-of-glimmith/achievements"
       ],
-      "confidence": "medium",
-      "openQuestions": [
-        "Verify exact rectangle definition and monomino behavior."
-      ]
+      "confidence": "high",
+      "openQuestions": [],
+      "implementationModel": {
+        "forbidsFilledRectangles": true,
+        "forbidsBars": true,
+        "forbidsSingleCells": true,
+        "canCoexistWithShapeBank": true
+      },
+      "confirmedMechanics": [
+        "Global rule.",
+        "Opposite of Boxy.",
+        "Filled rectangles, bars, and single cells are forbidden.",
+        "Can coexist with Shape Bank."
+      ],
+      "implemented": false,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "bricky",
       "canonicalName": "Bricky",
-      "implementationStatus": "blocked",
-      "alternateNames": ["No four-way corners", "No corner touching"],
-      "meaning": "Region borders may not create a four-line meeting at a grid vertex; sources also describe this as regions not cornering one another.",
-      "scope": ["edges_or_walls", "clue_vertices", "all_regions"],
-      "visualEditorInput": ["global_rule_toggle"],
-      "solverEncoding": ["blocked_until_semantics_verified"],
+      "implementationStatus": "ready",
+      "alternateNames": [
+        "No four-way corners",
+        "No corner touching"
+      ],
+      "meaning": "Global boundary-graph rule: forbids exactly four border segments meeting at a grid vertex, corresponding to four region corners meeting. It can include outer border, though outer border usually cannot reach degree 4.",
+      "scope": [
+        "global_rule",
+        "boundary_graph",
+        "grid_vertices"
+      ],
+      "visualEditorInput": [
+        "global_rule_toggle"
+      ],
+      "solverEncoding": [
+        "boundary_graph_constraint"
+      ],
       "rotationsReflections": "not_relevant",
       "implementationModel": {
-        "solverBehavior": "reject_not_implemented_semantics_unverified",
-        "uiPlaceholderOnly": true
+        "forbiddenVertexBorderDegree": 4,
+        "includesOuterBorder": true,
+        "fourRegionCornersMeeting": true
       },
       "localCandidateElimination": "partial",
       "testPuzzleIdea": "Reject four regions meeting around one interior vertex.",
@@ -433,24 +875,48 @@
         "https://steamcommunity.com/app/4160210?l=hungarian",
         "https://steamdb.info/patchnotes/22541095/"
       ],
-      "confidence": "medium",
-      "openQuestions": [
-        "Confirm if the rule is exactly no degree-4 boundary vertex or a broader no-corner-touching rule."
-      ]
+      "confidence": "high",
+      "openQuestions": [],
+      "confirmedMechanics": [
+        "Global boundary-graph rule.",
+        "Forbids exactly 4 border segments meeting at a grid vertex.",
+        "This corresponds to four region corners meeting.",
+        "It can include outer border, but outer border usually cannot reach 4."
+      ],
+      "implemented": false,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "loopy",
       "canonicalName": "Loopy",
-      "implementationStatus": "blocked",
-      "alternateNames": ["No T-junctions", "Loops"],
-      "meaning": "Region borders may not create a three-line meeting at a grid vertex, making boundaries loop-like rather than branching.",
-      "scope": ["edges_or_walls", "clue_vertices", "all_regions"],
-      "visualEditorInput": ["global_rule_toggle"],
-      "solverEncoding": ["blocked_until_semantics_verified"],
+      "implementationStatus": "ready",
+      "alternateNames": [
+        "No T-junctions",
+        "Loops"
+      ],
+      "meaning": "Global boundary-graph rule: forbids exactly three border segments meeting at a grid vertex. It forbids T-junctions, cares about outer boundary, does not require loops, and allows degree 4 vertices when Bricky is not active.",
+      "scope": [
+        "global_rule",
+        "boundary_graph",
+        "grid_vertices"
+      ],
+      "visualEditorInput": [
+        "global_rule_toggle"
+      ],
+      "solverEncoding": [
+        "boundary_graph_constraint"
+      ],
       "rotationsReflections": "not_relevant",
       "implementationModel": {
-        "solverBehavior": "reject_not_implemented_semantics_unverified",
-        "uiPlaceholderOnly": true
+        "forbiddenVertexBorderDegree": 3,
+        "forbidsTJunctions": true,
+        "requiresLoops": false,
+        "includesOuterBoundary": true,
+        "degree4AllowedWithoutBricky": true
       },
       "localCandidateElimination": "partial",
       "testPuzzleIdea": "Reject a partition with a T-junction boundary vertex.",
@@ -459,25 +925,50 @@
         "https://steamdb.info/patchnotes/22541095/",
         "https://steamcommunity.com/app/4160210?l=indonesian"
       ],
-      "confidence": "medium",
-      "openQuestions": [
-        "Confirm whether degree-1 endpoints are also restricted.",
-        "Confirm whether outer border edges count.",
-        "Confirm interaction with Bricky."
-      ]
+      "confidence": "high",
+      "openQuestions": [],
+      "confirmedMechanics": [
+        "Global boundary-graph rule.",
+        "Forbids exactly 3 border segments meeting at a grid vertex.",
+        "It does not require loops.",
+        "It forbids T-junctions.",
+        "It cares about outer boundary.",
+        "If Loopy is active but Bricky is not, degree 4 vertices are allowed."
+      ],
+      "implemented": false,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "inequality",
       "canonicalName": "Inequality",
-      "implementationStatus": "experimental",
-      "alternateNames": ["Greater-than clue", "Scales"],
-      "meaning": "An oriented inequality clue between adjacent regions orders their areas; the narrow tip indicates the smaller side.",
-      "scope": ["two_adjacent_regions", "numbers", "clue_edges_or_vertices"],
-      "visualEditorInput": ["oriented_inequality_marker"],
-      "solverEncoding": ["pairwise_candidate_incompatibility"],
+      "implementationStatus": "ready",
+      "alternateNames": [
+        "Greater-than clue",
+        "Scales"
+      ],
+      "meaning": "Edge relation clue: compares adjacent region areas with strict inequality. The narrow/small side points to the smaller region; equality is invalid.",
+      "scope": [
+        "edge_relation_clue",
+        "two_adjacent_regions",
+        "numbers"
+      ],
+      "visualEditorInput": [
+        "oriented_inequality_edge_marker"
+      ],
+      "solverEncoding": [
+        "pairwise_candidate_incompatibility"
+      ],
       "rotationsReflections": "not_relevant",
       "relationModel": {
-        "kind": "two_region_relation_clue",
+        "kind": "edge_two_region_relation_clue",
+        "adjacentOnly": true,
+        "strictInequality": true,
+        "narrowSidePointsToSmallerRegion": true,
+        "equalityInvalid": true,
         "notSimpleEdgeStateOnly": true
       },
       "localCandidateElimination": "partial",
@@ -486,24 +977,48 @@
         "https://steamcommunity.com/stats/4160210/achievements",
         "https://steamcommunity.com/app/4160210/discussions/search/?q=Inequality"
       ],
-      "confidence": "medium",
-      "openQuestions": [
-        "Verify exact editor icon orientation.",
-        "Verify whether equality has any separate clue."
-      ]
+      "confidence": "high",
+      "openQuestions": [],
+      "confirmedMechanics": [
+        "Edge relation clue.",
+        "Compares adjacent region areas.",
+        "Strict inequality only.",
+        "Narrow/small side points to the smaller region.",
+        "Equality is invalid."
+      ],
+      "implemented": false,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "difference",
       "canonicalName": "Difference",
       "implementationStatus": "ready",
-      "alternateNames": ["Area difference"],
-      "meaning": "A numeric clue between adjacent regions gives the absolute difference between their areas; zero means same area, not necessarily same shape.",
-      "scope": ["two_adjacent_regions", "numbers", "clue_edges_or_vertices"],
-      "visualEditorInput": ["difference_marker", "integer_difference"],
-      "solverEncoding": ["pairwise_candidate_incompatibility"],
+      "alternateNames": [
+        "Area difference"
+      ],
+      "meaning": "Edge relation clue: compares adjacent regions by absolute area-size difference. A value of 0 means equal area, not necessarily same shape.",
+      "scope": [
+        "edge_relation_clue",
+        "two_adjacent_regions",
+        "numbers"
+      ],
+      "visualEditorInput": [
+        "difference_edge_relation_marker",
+        "nonnegative_integer_difference"
+      ],
+      "solverEncoding": [
+        "pairwise_candidate_incompatibility"
+      ],
       "rotationsReflections": "not_relevant",
       "relationModel": {
-        "kind": "two_region_relation_clue",
+        "kind": "edge_two_region_relation_clue",
+        "adjacentOnly": true,
+        "absoluteAreaDifference": true,
+        "zeroMeansEqualAreaOnly": true,
         "notSimpleEdgeStateOnly": true
       },
       "localCandidateElimination": "partial",
@@ -513,50 +1028,107 @@
         "https://steamcommunity.com/stats/4160210/achievements"
       ],
       "confidence": "high",
-      "openQuestions": [
-        "Confirm whether the clue can appear on non-edge contacts."
-      ]
+      "openQuestions": [],
+      "confirmedMechanics": [
+        "Edge relation clue.",
+        "Compares adjacent regions.",
+        "Value is absolute area-size difference.",
+        "0 means equal area, not necessarily same shape."
+      ],
+      "implemented": true,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "watchtower",
       "canonicalName": "Watchtower",
-      "implementationStatus": "blocked",
-      "alternateNames": ["Keeping Watch"],
-      "meaning": "Confirmed as a window/rule name, but exact mechanics were not found in text sources. It may be a clue-cell visibility or path/flow mechanic.",
-      "scope": ["unknown"],
-      "visualEditorInput": ["unknown"],
-      "solverEncoding": ["blocked_until_semantics_verified"],
-      "rotationsReflections": "unknown",
+      "implementationStatus": "ready",
+      "alternateNames": [
+        "Keeping Watch"
+      ],
+      "meaning": "Vertex/corner clue: counts how many distinct regions touch the clue vertex. Values are 1 to 4; a value of 1 means all existing cells around the vertex belong to the same region.",
+      "scope": [
+        "vertex_clue",
+        "corner_clue",
+        "grid_vertices",
+        "region_count"
+      ],
+      "visualEditorInput": [
+        "watchtower_vertex_value_1_to_4"
+      ],
+      "solverEncoding": [
+        "boundary_vertex_region_count_constraint"
+      ],
+      "rotationsReflections": "not_relevant",
       "implementationModel": {
-        "solverBehavior": "reject_not_implemented_semantics_unverified",
-        "uiPlaceholderOnly": true
+        "valueRange": [
+          1,
+          4
+        ],
+        "countsDistinctRegionsTouchingVertex": true,
+        "oneMeansAllExistingAdjacentCellsSameRegion": true
       },
-      "localCandidateElimination": "unknown",
+      "localCandidateElimination": "partial",
       "testPuzzleIdea": "Deferred until rule text is captured; likely use a small clue-cell visibility board.",
       "sourceUrls": [
         "https://steamcommunity.com/stats/4160210/achievements",
         "https://www.reddit.com/r/TheArtisanOfGlimmith/comments/1sm7y2o/loved_this_puzzle_watchtower_rose_windows/"
       ],
-      "confidence": "low",
-      "openQuestions": [
-        "Determine exact clue meaning.",
-        "Determine whether it counts cells, regions, symbols, or sight lines.",
-        "Determine whether directions are orthogonal only."
-      ]
+      "confidence": "high",
+      "openQuestions": [],
+      "confirmedMechanics": [
+        "Vertex/corner clue.",
+        "Counts how many distinct regions touch the clue vertex.",
+        "Value is 1 to 4.",
+        "A 1 means all cells around the vertex that exist belong to the same region.",
+        "A 2 means exactly two distinct regions touch that vertex, etc.",
+        "User provided tutorial screenshot: \"Counts how many regions are touching the clue.\""
+      ],
+      "implemented": false,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     },
     {
       "id": "compass",
       "canonicalName": "Compass",
-      "implementationStatus": "blocked",
-      "alternateNames": ["Pointing the Way", "Compass clue"],
-      "meaning": "A compass clue appears to count cells of its own region in the eight directional sectors around the clue.",
-      "scope": ["clue_cells", "numbers", "directions"],
-      "visualEditorInput": ["compass_directional_numbers"],
-      "solverEncoding": ["blocked_until_semantics_verified"],
+      "implementationStatus": "ready",
+      "alternateNames": [
+        "Pointing the Way",
+        "Compass clue"
+      ],
+      "meaning": "Cell clue: counts cells of the clue's own region in four half-plane directions N, E, S, and W. Diagonal cells contribute to both relevant directions, the clue cell itself does not count, and missing directions impose no restriction.",
+      "scope": [
+        "cell_clue",
+        "numbers",
+        "directions",
+        "one_region"
+      ],
+      "visualEditorInput": [
+        "compass_directional_numbers_n_e_s_w"
+      ],
+      "solverEncoding": [
+        "candidate_filter"
+      ],
       "rotationsReflections": "absolute_directions_matter",
       "implementationModel": {
-        "solverBehavior": "reject_not_implemented_semantics_unverified",
-        "uiPlaceholderOnly": true
+        "directions": [
+          "N",
+          "E",
+          "S",
+          "W"
+        ],
+        "directionGeometry": "half_plane",
+        "diagonalCellsCanContributeToTwoDirections": true,
+        "clueCellCounts": false,
+        "missingDirectionsMeanNoRestriction": true,
+        "fullyBlankCompassHasNoDirectionalRestriction": true,
+        "countsForSolitude": true
       },
       "localCandidateElimination": "yes",
       "testPuzzleIdea": "With an east count of 2, accept only candidates with exactly two region cells in the clue's east sector.",
@@ -565,12 +1137,27 @@
         "https://steamcommunity.com/app/4160210/discussions/0/796715232585227442/",
         "https://steamdb.info/patchnotes/22658641/"
       ],
-      "confidence": "medium",
-      "openQuestions": [
-        "Verify sector boundaries.",
-        "Verify whether the clue cell itself counts.",
-        "Verify how blank directions are represented."
-      ]
+      "confidence": "high",
+      "openQuestions": [],
+      "confirmedMechanics": [
+        "Cell clue.",
+        "Counts cells of the clue's own region in four directions: N, E, S, W.",
+        "Direction means half-plane, not just a ray.",
+        "East count = all own-region cells with x greater than clue x.",
+        "West count = all own-region cells with x less than clue x.",
+        "North count = all own-region cells with y less than clue y.",
+        "South count = all own-region cells with y greater than clue y.",
+        "A northeast cell contributes to both North and East.",
+        "The clue cell itself does not count.",
+        "Missing directions mean no restriction.",
+        "A fully blank Compass means no directional restriction, but still counts as a clue/symbol for Solitude."
+      ],
+      "implemented": false,
+      "confirmation": {
+        "basis": "user_confirmed_in_game_observation",
+        "date": "2026-05-16",
+        "note": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
+      }
     }
   ],
   "nonRuleNames": [
@@ -610,5 +1197,6 @@
       "name": "Secluded Garden",
       "reason": "Appears to be a location or puzzle area label."
     }
-  ]
+  ],
+  "knowledgeBasis": "Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics."
 }

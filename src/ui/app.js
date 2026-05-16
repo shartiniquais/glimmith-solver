@@ -747,7 +747,7 @@ function ruleControlsHtml(id, active, disabled) {
     const reason =
       RULE_REGISTRY[id].implementationStatus === "blocked"
         ? "Placeholder only. Solver rejects this rule because semantics are unverified."
-        : "Placeholder only. Solver rejects this rule until implementation edge cases are settled.";
+        : "Known and ready, but not implemented in the solver yet.";
     return `<div class="rule-controls"><p>${escapeHtml(reason)}</p></div>`;
   }
   if (id === "precision") return `<div class="rule-controls"><p>Edit with the Precision area field.</p></div>`;

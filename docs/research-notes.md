@@ -1,88 +1,101 @@
 # Rule Research Notes
 
-Research date: 2026-05-16.
+Updated: 2026-05-16.
 
-This pass intentionally did not change solver code. It created a sourced inventory for later implementation and kept ambiguous mechanics out of the implementation path.
+This document now has two layers of evidence:
 
-## Method
+- External/public source research from the initial inventory pass.
+- User-confirmed in-game observations captured in the project conversation on 2026-05-16.
 
-I started from the requested seed queries and checked:
+For rule semantics, the user-confirmed observations are authoritative project knowledge. External source URLs remain useful provenance, but they are no longer the authority for mechanics that the user directly confirmed.
+
+## Source Baseline
+
+The original research pass checked:
 
 - Official/public Steam surfaces: store page, achievement list, discussions, workshop/search snippets, and patch-note mirrors.
-- Guide pages from Camzillasmom. A targeted `casualgameguides.com` search did not return usable rule pages in this pass.
+- Guide pages from Camzillasmom. A targeted `casualgameguides.com` search did not return usable rule pages in that pass.
 - Review/discussion snippets where later rules were not explained by guides.
 - The current repo as a cross-check for already implemented prototype rules, not as an external source.
 
-The achievement list was useful for canonical names, but it is not enough to define mechanics. For each name, I looked for text that explained what the player actually has to satisfy.
+Strong public-source references retained in `docs/rules-inventory.json` include Steam achievements/discussions, GameFAQs achievement mirrors, Camzillasmom guide pages, and SteamDB patch-note mirrors. These URLs should not be removed when updating mechanics.
 
-## Strong Sources
+## User-Confirmed Mechanics
 
-- Steam store page: https://store.steampowered.com/app/4160210/The_Artisan_of_Glimmith/
-- Steam achievement list: https://steamcommunity.com/stats/4160210/achievements
-- GameFAQs achievement mirror: https://gamefaqs.gamespot.com/pc/607835-the-artisan-of-glimmith/achievements
-- Precision guide: https://camzillasmom.com/the-artisan-of-glimmith-precision-window-puzzle-solutions/
-- Watermill guide for Gemini/Delta: https://camzillasmom.com/the-artisan-of-glimmith-window-3-watermill-puzzle-solutions/
-- Polyomino guide: https://camzillasmom.com/the-artisan-of-glimmith-polyomino-window-puzzle-solutions/
-- Mingle Shape guide: https://camzillasmom.com/the-artisan-of-glimmith-mingle-shape-window-puzzle-solutions/
-- Forest Entrance guide for mixed rules: https://camzillasmom.com/the-artisan-of-glimmith-forest-entrance-window-puzzle-solutions/
-- Area Number guide: https://camzillasmom.com/the-artisan-of-glimmith-area-number-window-puzzle-solutions/
-- Difference discussion: https://steamcommunity.com/app/4160210/discussions/0/840628131190565348/
-- Match discussion: https://steamcommunity.com/app/4160210/discussions/0/796716542888872782/
-- Mismatch and Boxy discussion: https://steamcommunity.com/app/4160210/discussions/0/841752762653913411/
-- Loopy and Bricky discussion: https://steamcommunity.com/app/4160210/discussions/0/796716542888934780/
-- Palisade discussion search: https://steamcommunity.com/app/4160210/discussions/search/?q=Palisade
-- Compass discussion search: https://steamcommunity.com/app/4160210/discussions/search/?q=Compass
-- Solitude discussion search: https://steamcommunity.com/app/4160210/discussions/search/?q=Solitude
-- Size Separation discussion search: https://steamcommunity.com/app/4160210/discussions/search/?q=Size%20Separation
-- Range discussion search: https://steamcommunity.com/app/4160210/discussions/search/?q=Range
-- Inequality discussion search: https://steamcommunity.com/app/4160210/discussions/search/?q=Inequality
-- Patch note mirror mentioning Palisade/Compass translation fixes: https://steamdb.info/patchnotes/22658641/
-- Patch note mirror mentioning Loopy tutorial image fix and later tutorial work: https://steamdb.info/patchnotes/22541095/
+The user confirmed exact mechanics for all current inventory rules. As a result, every current rule is now `ready`.
 
-## Findings
+Implemented now:
 
-The early rules are well supported. Precision, Rose Windows, Gemini, Delta, Polyomino, Mingle Shape, and Area Number have direct guide text that matches the current solver model: generate connected candidate regions, filter candidates by local clue/rule requirements, then use exact cover and pairwise shape constraints.
+- `precision`
+- `shape_bank`
+- `rose_window`
+- `gemini`
+- `delta`
+- `difference`
+- `area_number`
+- `polyomino`
+- `mingle_shape`
 
-Shape Bank is confirmed as a named window/rule family, and guide pages repeatedly list "Shapes allowed" entries. The one unresolved implementation detail is multiplicity. The current prototype treats the bank as an allowed-shape set; before implementing stricter bank behavior, verify whether the game ever treats bank entries as consumable.
+Ready but not implemented:
 
-Match and Mismatch are global shape-family rules rather than edge marker rules like Gemini/Delta. The best evidence says Match asks for multiple regions of the same shape, while Mismatch asks for distinct shapes. Dev/player discussion around Match explicitly raises isometry questions, so solver configuration should keep rotation/reflection handling explicit.
+- `match`
+- `mismatch`
+- `range`
+- `solitude`
+- `size_separation`
+- `boxy`
+- `non_boxy`
+- `inequality`
+- `palisade`
+- `bricky`
+- `loopy`
+- `compass`
+- `watchtower`
 
-Area-number-family rules split cleanly:
+There are no blocked rules left in the current inventory. Ready-but-not-implemented rules should be treated as known rules and rejected with a clear "known and ready, but not implemented" message until solver work is added.
 
-- Precision and Range are global candidate filters.
-- Area Number is a clue-cell candidate filter.
-- Size Separation, Inequality, and Difference are pairwise area constraints.
+## Confirmed Rule Families
 
-The wall/graph family needs more careful modeling:
+Area rules:
 
-- Palisade clues appear to prescribe local wall patterns around clue cells.
-- Bricky is probably a no-degree-4 boundary-vertex rule, also described as regions not cornering one another.
-- Loopy is probably a no-degree-3 boundary-vertex rule, preventing T-junctions and making borders loop-like.
+- `precision`: one global exact area, distinct from Area Number clues.
+- `area_number`: positive integer cell clue; multiple clues in one region must agree.
+- `range`: global inclusive min/max area rule, including min-only and max-only.
+- `difference`: edge relation comparing adjacent region areas by absolute difference; `0` means equal area only.
+- `inequality`: strict edge relation; narrow/small side points to the smaller region.
+- `size_separation`: global rule forbidding equal-area edge-adjacent regions.
 
-These can still fit the central candidate abstraction, but they need derived boundary-edge data for each candidate and constraints over the combined selected partition.
+Shape rules:
 
-Compass is likely a candidate filter using relative positions around the clue cell. Steam developer snippets mention the eight sectors around a compass clue, but exact sector boundaries and blank-number behavior still need in-game confirmation.
+- `shape_bank`: global reusable allowed-shape list; shapes can be reused unlimited times and may be unused.
+- `polyomino`: cell clue whose region must match the clue shape; same-shape duplicate clues can share a region, different shapes cannot.
+- `gemini`: edge relation requiring same shape on opposite sides; same region on both sides is invalid.
+- `delta`: kept as different-shape edge relation unless corrected later; same region on both sides is invalid.
+- `mingle_shape`: global edge-adjacent regions must not share shape; corner contact does not count.
+- `match`: all regions share one shape; no groups/subsets.
+- `mismatch`: all regions have distinct shapes; no groups/subsets.
+- `boxy`: every region is a filled rectangle; bars and single cells count.
+- `non_boxy`: opposite of Boxy; rectangles, bars, and single cells are forbidden.
 
-Watchtower is the only confirmed rule/window name where I did not find enough text to define the mechanic. It should remain low confidence until someone captures the tutorial card, editor UI, or a clear screenshot/video.
+Symbol/clue rules:
 
-## Window Names vs Rule Names
+- `rose_window`: every region has exactly one of each listed Rose symbol and no extra Rose symbols.
+- `solitude`: every region has exactly one counted cell symbol/clue; global rule cards do not count.
 
-The achievement list uses "Restore the X Window" for both rule windows and progression/area windows. I treated these as non-rule names unless a mechanic was found:
+Boundary/graph rules:
 
-- Forest Entrance
-- Castle Entrance
-- Market
-- Town
-- Forest
-- Hedge Maze
-- Spiral Island
-- Secret Garden / Secluded Garden style location names
+- `palisade`: cell clue specifying the count/pattern of borders around the clue cell.
+- `bricky`: forbids exactly four border segments meeting at a grid vertex.
+- `loopy`: forbids exactly three border segments meeting at a grid vertex; it forbids T-junctions and does not require loops.
 
-Hedge Maze is the most suspicious case. It may hide a rule family, but the sources found only confirm it as a window name. It should not become a solver rule without better evidence.
+Direction/visibility rules:
+
+- `compass`: cell clue counting own-region cells in N/E/S/W half-planes; diagonal cells can count in two directions.
+- `watchtower`: vertex/corner clue counting distinct regions touching the clue vertex, value 1 to 4.
 
 ## Implementation Notes For Later
 
-Rules that should be straightforward candidate filters:
+Straightforward candidate filters:
 
 - `precision`
 - `shape_bank`
@@ -90,12 +103,13 @@ Rules that should be straightforward candidate filters:
 - `polyomino`
 - `area_number`
 - `range`
-- `solitude`, once exact-vs-at-most is verified
+- `solitude`
 - `boxy`
 - `non_boxy`
-- `compass`, once exact sector semantics are verified
+- `compass`
+- `palisade`, where local border-pattern data is available
 
-Rules that need pairwise compatibility checks:
+Pairwise/global compatibility checks:
 
 - `gemini`
 - `delta`
@@ -103,17 +117,13 @@ Rules that need pairwise compatibility checks:
 - `size_separation`
 - `inequality`
 - `difference`
-
-Rules that need global constraints:
-
 - `match`
 - `mismatch`
-- possible consumable `shape_bank`, if verified
 
-Rules that need boundary graph data:
+Boundary graph constraints:
 
-- `palisade`
 - `bricky`
 - `loopy`
+- `watchtower`
 
-Do not implement `watchtower` yet. It needs primary rule text or a clear tutorial screenshot first.
+Do not guess solver logic beyond these confirmed mechanics. Newly ready rules should first receive validation/schema/UI support, then focused solver implementations with tests that prove each rule eliminates an otherwise valid solution.

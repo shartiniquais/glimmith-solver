@@ -1,194 +1,389 @@
 # The Artisan of Glimmith Rule Inventory
 
-Research date: 2026-05-16.
+Updated: 2026-05-16.
 
-This is a documentation-only inventory for future solver work. It treats Steam achievement/window names as discovery signals, then separates them from actual rule mechanics where possible. Confidence means:
-
-- `high`: explicit rule wording was found, or two independent sources agree.
-- `medium`: the rule exists and the core mechanic is strongly suggested, but edge cases need in-game verification.
-- `low`: the name is confirmed, but the mechanic is inferred or not yet explained by text sources.
+This inventory now combines the original external-source research with user-confirmed in-game observations from the project conversation. The confirmed mechanics below are authoritative project knowledge; `sourceUrls` remain as historical research references, not as the authority for the newly confirmed semantics.
 
 Implementation status means:
 
-- `ready`: mechanics are verified enough to implement now.
-- `experimental`: mechanics are likely, but unresolved edge cases remain.
-- `blocked`: exact semantics are not verified enough for faithful solving.
+- `ready`: Mechanics are verified enough to implement now; ready does not imply solver support is already implemented.
+- `experimental`: Mechanics are likely, but unresolved edge cases remain.
+- `blocked`: Exact semantics are not verified enough for faithful solving.
+
+Current status summary: 22 ready, 0 experimental, 0 blocked. 9 rules are implemented in the solver; 13 are ready-but-not-implemented and should validate as known but unsupported until solver work lands.
 
 ## Rule Table
 
-| ID | Canonical rule | implementationStatus | Alternate names | Player-facing meaning | Scope | Editor input | Solver encoding | Rotations/reflections | Local candidate elimination | Confidence |
+| ID | Canonical rule | Status | Implemented | Player-facing meaning | Scope | Editor input | Solver encoding | Rotations/reflections | Local candidate elimination | Confidence |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `precision` | Precision | ready | Exact area, No More No Less | Every region must contain exactly `N` cells. | One region, all regions, numbers | Global area integer | Candidate filter | Not relevant | Yes | high |
-| `shape_bank` | Shape Bank | ready | Allowed shapes, bank | Every region must match one of the displayed shapes. | Shape bank, all regions | Reusable allowed polyomino set, symmetry flags, optional future use limits | Candidate filter; optional shape-use cardinality only when `exactUses` or `maxUses` is supplied | Yes, configurable | Yes | high |
-| `rose_window` | Rose Windows | ready | Rose Window, one of each symbol | Every region must satisfy required symbol counts. | Symbols inside regions, all regions | Symbol grid and required symbol-count map | Candidate filter; exact-cover-like symbol counts | Not relevant | Yes | high |
-| `gemini` | Gemini | ready | Same-shape relation clue | The two regions referenced by the clue must have the same shape. | Two regions, shape relation, clue edge/vertex | Two-region relation marker and shape-equivalence settings | Pairwise candidate compatibility | Yes, configurable | Partial | high |
-| `delta` | Delta | ready | Different-shape relation clue | The two regions referenced by the clue must have different shapes. | Two regions, shape relation, clue edge/vertex | Two-region relation marker and shape-equivalence settings | Pairwise candidate incompatibility | Yes, configurable | Partial | high |
-| `polyomino` | Polyomino | ready | Required shape clue | A region containing a shape clue must have that shape; monominoes may be implied in early puzzles. | One region, clue cells, shapes | Shape clue cells and shape-equivalence settings | Candidate filter | Yes, configurable | Yes | high |
-| `mingle_shape` | Mingle Shape | ready | Neighboring regions different shapes | Neighboring regions must not have the same shape. | Two adjacent regions, all adjacencies, shapes | Global toggle and shape-equivalence settings | Pairwise candidate incompatibility for adjacent candidates | Yes, configurable | Partial | high |
-| `area_number` | Area Number | ready | Number clue, area clue | A number inside a region gives that region's area. | One region, clue cells, numbers | Number clue cells | Candidate filter | Not relevant | Yes | high |
-| `palisade` | Palisade | blocked | Wall-pattern clue, fence clue | Likely local wall/border pattern clues, but exact semantics are unverified. | Edges/walls, clue cells, clue vertices | Placeholder only until verified | Reject with not-implemented/semantics-unverified message | Unknown | Unknown | medium |
-| `match` | Match | experimental | Uniformity, same shape globally | Regions in the same group must share the same shape. | Region groups, shapes | Group field, default global group, shape-equivalence settings | Global all-same shape constraint | Yes, configurable | No | high |
-| `mismatch` | Mismatch | experimental | Uniqueness, all different shapes | Regions in the same group must have distinct shapes under the active equivalence settings. | Region groups, shapes | Group field, default global group, shape-equivalence settings | Global all-different shape constraint | Yes, configurable | No | medium |
-| `range` | Range | experimental | Area range | Every region's area must be inside an inclusive numeric range, for example 6 to 7. | One region, all regions, numbers | Minimum and maximum area | Candidate filter | Not relevant | Yes | medium |
-| `solitude` | Solitude | experimental | Lonely Island, one symbol/clue per region | Each region appears to contain exactly one clue/symbol, not one of each symbol. Exact-vs-at-most wording needs verification. | Symbols inside regions, clue cells | Set of counted clue/symbol cells | Candidate filter; possibly exact-cover clue coverage | Not relevant | Yes | medium |
-| `size_separation` | Size Separation | experimental | Different neighboring sizes | Adjacent regions must have different areas. | Two adjacent regions, numbers | Global toggle | Pairwise candidate incompatibility by area | Not relevant | Partial | medium |
-| `boxy` | Boxy | experimental | Rectangles | Regions must be rectangular boxes. | One region, shapes | Global toggle, optional allowed dimensions | Candidate filter | Reflections/rotations collapse by rectangle dimensions | Yes | medium |
-| `non_boxy` | Non-Boxy | experimental | Not rectangles | Regions must not be rectangular boxes. | One region, shapes | Global toggle | Candidate filter | Not relevant beyond rectangle detection | Yes | medium |
-| `bricky` | Bricky | blocked | No four-way corners, no corner touching | Likely a boundary-vertex rule, but exact semantics are unverified. | Edges/walls, clue vertices, all regions | Placeholder only until verified | Reject with not-implemented/semantics-unverified message | Unknown | Unknown | medium |
-| `loopy` | Loopy | blocked | No T-junctions, loops | Likely a boundary-vertex rule, but exact semantics are unverified. | Edges/walls, clue vertices, all regions | Placeholder only until verified | Reject with not-implemented/semantics-unverified message | Unknown | Unknown | medium |
-| `inequality` | Inequality | experimental | Greater-than relation clue, scales | A relation clue between two regions orders their areas; the narrow tip indicates the smaller side. | Two regions, numbers, clue edge/vertex | Two-region relation marker | Pairwise candidate incompatibility by area comparison | Not relevant | Partial | medium |
-| `difference` | Difference | ready | Area difference relation clue | A numeric relation clue between two regions gives the absolute difference between their areas. `0` means equal area but not necessarily same shape. | Two regions, numbers, clue edge/vertex | Difference marker and integer | Pairwise candidate incompatibility by area difference | Not relevant | Partial | high |
-| `watchtower` | Watchtower | blocked | Keeping Watch | Confirmed as a window/rule name, but the exact mechanic was not found in text sources. | Unknown | Placeholder only until verified | Reject with not-implemented/semantics-unverified message | Unknown | Unknown | low |
-| `compass` | Compass | blocked | Pointing the Way, compass clue | Likely counts cells of its own region in directional sectors, but exact sector semantics are unverified. | Clue cells, numbers, directions | Placeholder only until verified | Reject with not-implemented/semantics-unverified message | Unknown | Unknown | medium |
+| `precision` | Precision | ready | Yes | Global rule: every region must have area exactly N. Only one Precision rule can be active at a time; this is distinct from Area Number cell clues. | Global Rule, All Regions, Numbers | Single Global Area Integer | Candidate Filter | Not Relevant | Yes | high |
+| `shape_bank` | Shape Bank | ready | Yes | Global rule: every region must match one shape from the displayed shape list. Shapes are reusable unlimited times and may be unused; rotations and reflections are allowed. | Global Rule, Shape Bank, All Regions, Shapes | Displayed Shape List, Allow Rotations, Allow Reflections | Candidate Filter | Rotations And Reflections Allowed | Yes | high |
+| `rose_window` | Rose Windows | ready | Yes | Every region needs exactly one of each listed Rose symbol and no extra Rose symbols. Multiple symbol families/colors are not distinct for solver purposes. | Global Rule, Symbols Inside Regions, All Regions | Rose Symbol Grid, Listed Rose Symbols | Candidate Filter, Symbol Count Constraint | Not Relevant | Yes | high |
+| `gemini` | Gemini | ready | Yes | Edge relation clue: compares the two regions on opposite sides of the edge and requires them to have the same shape. The same region cannot be on both sides; rotations and reflections count as the same shape. | Edge Relation Clue, Two Adjacent Regions, Shapes | Same Shape Edge Relation Marker | Pairwise Candidate Compatibility | Rotations And Reflections Count Same | Partial | high |
+| `delta` | Delta | ready | Yes | Edge relation clue: current interpretation is that the two regions on opposite sides of the edge must have different shapes. The same region cannot be on both sides; rotations and reflections count as the same shape. | Edge Relation Clue, Two Adjacent Regions, Shapes | Different Shape Edge Relation Marker | Pairwise Candidate Incompatibility | Rotations And Reflections Count Same | Partial | high |
+| `polyomino` | Polyomino | ready | Yes | Cell clue: the region containing the clue must match the clue shape. Multiple same-shape Polyomino clues may share a region, but different Polyomino shapes cannot share a region. Drawn orientation does not matter because rotations and reflections are allowed. | Cell Clue, One Region, Shapes | Shape Clue Cells | Candidate Filter | Rotations And Reflections Allowed | Yes | high |
+| `mingle_shape` | Mingle Shape | ready | Yes | Global rule: edge-adjacent regions must not have the same shape. Corner-touching does not count. Rotations and reflections count as the same shape. | Global Rule, Two Adjacent Regions, All Regions, Shapes | Global Rule Toggle | Pairwise Candidate Incompatibility | Rotations And Reflections Count Same | Partial | high |
+| `area_number` | Area Number | ready | Yes | Cell clue: a region containing an Area Number clue must have that area. Multiple Area Number clues in one region must agree. Values are positive integers only. | Cell Clue, One Region, Numbers | Positive Integer Number Clue Cells | Candidate Filter | Not Relevant | Yes | high |
+| `palisade` | Palisade | ready | No | Cell clue: describes which sides around the clue cell are borders. Icon rotation does not matter. Types are empty, one_sided, corner, opposite, three_sided, and full. | Cell Clue, Edges Or Walls, Local Border Pattern | Palisade Clue Type | Candidate Filter, Local Border Pattern Constraint | Icon Rotation Does Not Matter | Partial | high |
+| `match` | Match | ready | No | Global rule: all regions in the puzzle must have the same shape. There are no groups/subsets. Rotations and reflections count as the same shape. | Global Rule, All Regions, Shapes | Global Rule Toggle | Global All Same Shape Constraint | Rotations And Reflections Count Same | No | high |
+| `mismatch` | Mismatch | ready | No | Global rule: all regions in the puzzle must have distinct shapes. Rotations and reflections count as the same shape. | Global Rule, All Regions, Shapes | Global Rule Toggle | Global All Different Shape Constraint | Rotations And Reflections Count Same | No | high |
+| `range` | Range | ready | No | Global rule: every region area must be within an inclusive range. It supports min-only, max-only, or min+max; complex disjoint ranges are not part of the mechanic. | Global Rule, All Regions, Numbers | Optional Minimum Area, Optional Maximum Area | Candidate Filter | Not Relevant | Yes | high |
+| `solitude` | Solitude | ready | No | Global rule: every region must contain exactly one counted cell symbol or clue. Counted things are cell-based clues/symbols; Rose Windows count only when the Rose rule has a single symbol type. Global rule cards do not count. | Global Rule, Symbols Inside Regions, Cell Clues | Counted Cell Clue Or Symbol Set | Candidate Filter, Exactly One Counted Cell Constraint | Not Relevant | Yes | high |
+| `size_separation` | Size Separation | ready | No | Global rule: edge-adjacent regions must have different areas. Corner-touching does not count. | Global Rule, Two Adjacent Regions, Numbers | Global Rule Toggle | Pairwise Candidate Incompatibility | Not Relevant | Partial | high |
+| `boxy` | Boxy | ready | No | Global rule: every region must be a filled rectangle. 1xN bars and single cells count as boxy; holes are not allowed. | Global Rule, One Region, Shapes | Global Rule Toggle | Candidate Filter | Not Relevant Beyond Rectangle Detection | Yes | high |
+| `non_boxy` | Non-Boxy | ready | No | Global rule: opposite of Boxy. Filled rectangles, bars, and single cells are forbidden. It can coexist with Shape Bank. | Global Rule, One Region, Shapes | Global Rule Toggle | Candidate Filter | Not Relevant Beyond Rectangle Detection | Yes | high |
+| `bricky` | Bricky | ready | No | Global boundary-graph rule: forbids exactly four border segments meeting at a grid vertex, corresponding to four region corners meeting. It can include outer border, though outer border usually cannot reach degree 4. | Global Rule, Boundary Graph, Grid Vertices | Global Rule Toggle | Boundary Graph Constraint | Not Relevant | Partial | high |
+| `loopy` | Loopy | ready | No | Global boundary-graph rule: forbids exactly three border segments meeting at a grid vertex. It forbids T-junctions, cares about outer boundary, does not require loops, and allows degree 4 vertices when Bricky is not active. | Global Rule, Boundary Graph, Grid Vertices | Global Rule Toggle | Boundary Graph Constraint | Not Relevant | Partial | high |
+| `inequality` | Inequality | ready | No | Edge relation clue: compares adjacent region areas with strict inequality. The narrow/small side points to the smaller region; equality is invalid. | Edge Relation Clue, Two Adjacent Regions, Numbers | Oriented Inequality Edge Marker | Pairwise Candidate Incompatibility | Not Relevant | Partial | high |
+| `difference` | Difference | ready | Yes | Edge relation clue: compares adjacent regions by absolute area-size difference. A value of 0 means equal area, not necessarily same shape. | Edge Relation Clue, Two Adjacent Regions, Numbers | Difference Edge Relation Marker, Nonnegative Integer Difference | Pairwise Candidate Incompatibility | Not Relevant | Partial | high |
+| `watchtower` | Watchtower | ready | No | Vertex/corner clue: counts how many distinct regions touch the clue vertex. Values are 1 to 4; a value of 1 means all existing cells around the vertex belong to the same region. | Vertex Clue, Corner Clue, Grid Vertices, Region Count | Watchtower Vertex Value 1 To 4 | Boundary Vertex Region Count Constraint | Not Relevant | Partial | high |
+| `compass` | Compass | ready | No | Cell clue: counts cells of the clue's own region in four half-plane directions N, E, S, and W. Diagonal cells contribute to both relevant directions, the clue cell itself does not count, and missing directions impose no restriction. | Cell Clue, Numbers, Directions, One Region | Compass Directional Numbers N E S W | Candidate Filter | Absolute Directions Matter | Yes | high |
 
-## Implementation Constraints
+## Implementation Policy
 
-- Shape Bank initially means a reusable allowed-shape set. JSON includes optional future `exactUses` and `maxUses` fields, but those limits should not be enforced unless supplied.
-- Rose Windows must use required symbol counts, not a hard-coded single symbol family.
-- Shape comparison must support configurable rotation and reflection equivalence wherever shapes are compared.
-- Gemini, Delta, Difference, and Inequality are relation clues between two regions. They should not be modeled only as simple edge states.
-- Match and Mismatch must support a `group` field; the first implementation may use a single default `global` group.
-- Palisade, Bricky, Loopy, Compass, and Watchtower are blocked for solving. UI placeholders are acceptable only if useful, and solving should reject them with a clear not-implemented/semantics-unverified message.
+- Ready-but-not-implemented rules should fail validation/solving with `reject_known_ready_not_implemented`; they are known rules, not unknown rule IDs.
+- Blocked-rule behavior remains `reject_not_implemented_semantics_unverified` for any future rule whose semantics become unverified again. No current inventory rule is blocked.
+- Blocked-rule UI policy remains `placeholder_only_if_useful` for future use.
+- Shape comparison: Support configurable rotation/reflection equivalence; confirmed shape-comparison rules count rotations and reflections as the same shape.
+- Relation clues: Model relation clues as constraints between two regions, not as simple edge states only; confirmed relation clues are edge/vertex/cell clues that reference adjacent or touching regions as specified.
+- Shape Bank means a reusable allowed-shape set: entries may be reused unlimited times and may also be unused. Optional `exactUses` and `maxUses` fields remain future extension points and should not be enforced unless explicitly implemented.
+- Rose Windows use listed symbols/counts and, per confirmed mechanics, every region needs exactly one of each listed Rose symbol and no extras.
+- Match and Mismatch are global rules only; do not add group/subset behavior for the faithful solver.
+
+## Ready But Not Implemented
+
+- `palisade`: Cell clue: describes which sides around the clue cell are borders. Icon rotation does not matter. Types are empty, one_sided, corner, opposite, three_sided, and full.
+- `match`: Global rule: all regions in the puzzle must have the same shape. There are no groups/subsets. Rotations and reflections count as the same shape.
+- `mismatch`: Global rule: all regions in the puzzle must have distinct shapes. Rotations and reflections count as the same shape.
+- `range`: Global rule: every region area must be within an inclusive range. It supports min-only, max-only, or min+max; complex disjoint ranges are not part of the mechanic.
+- `solitude`: Global rule: every region must contain exactly one counted cell symbol or clue. Counted things are cell-based clues/symbols; Rose Windows count only when the Rose rule has a single symbol type. Global rule cards do not count.
+- `size_separation`: Global rule: edge-adjacent regions must have different areas. Corner-touching does not count.
+- `boxy`: Global rule: every region must be a filled rectangle. 1xN bars and single cells count as boxy; holes are not allowed.
+- `non_boxy`: Global rule: opposite of Boxy. Filled rectangles, bars, and single cells are forbidden. It can coexist with Shape Bank.
+- `bricky`: Global boundary-graph rule: forbids exactly four border segments meeting at a grid vertex, corresponding to four region corners meeting. It can include outer border, though outer border usually cannot reach degree 4.
+- `loopy`: Global boundary-graph rule: forbids exactly three border segments meeting at a grid vertex. It forbids T-junctions, cares about outer boundary, does not require loops, and allows degree 4 vertices when Bricky is not active.
+- `inequality`: Edge relation clue: compares adjacent region areas with strict inequality. The narrow/small side points to the smaller region; equality is invalid.
+- `watchtower`: Vertex/corner clue: counts how many distinct regions touch the clue vertex. Values are 1 to 4; a value of 1 means all existing cells around the vertex belong to the same region.
+- `compass`: Cell clue: counts cells of the clue's own region in four half-plane directions N, E, S, and W. Diagonal cells contribute to both relevant directions, the clue cell itself does not count, and missing directions impose no restriction.
 
 ## Rule Details
 
 ### `precision`
 
-- Test idea: a 2 by 3 board with candidate splits of areas 2 and 4; `precision = 3` should eliminate both and allow only two triomino regions.
+- Implementation status: ready; implemented: Yes.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Global rule.
+  - Every region must have area exactly N.
+  - Only one Precision rule can be active at a time.
+  - Do not confuse Precision with Area Number clues.
+- Test idea: Use a 2 by 3 board where only two triomino regions satisfy precision = 3.
 - Source URLs: https://camzillasmom.com/the-artisan-of-glimmith-precision-window-puzzle-solutions/, https://steamcommunity.com/stats/4160210/achievements
-- Open questions: none for the prototype.
+- Open questions: none.
 
 ### `shape_bank`
 
-- Test idea: a 3 by 3 board where both an L triomino and a straight triomino could cover a clue-free region; a bank containing only the straight triomino should eliminate the L.
+- Implementation status: ready; implemented: Yes.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Global rule.
+  - Every region must match one shape from the displayed shape list.
+  - Shapes are reusable unlimited times.
+  - A listed shape may be used zero times.
+  - Rotations and reflections are allowed.
+- Test idea: Allow only a straight triomino in the bank and reject an otherwise valid L-triomino region.
 - Source URLs: https://steamcommunity.com/stats/4160210/achievements, https://gamefaqs.gamespot.com/pc/607835-the-artisan-of-glimmith/achievements, https://camzillasmom.com/the-artisan-of-glimmith-mingle-shape-window-puzzle-solutions/
-- Open questions: confirm whether a banked shape may be reused unlimited times in all game contexts, or whether some puzzles limit each bank entry to one use.
+- Open questions: none.
 
 ### `rose_window`
 
-- Test idea: a 4-cell board with symbols A, A, B, B; require each region to contain one A and one B, eliminating same-symbol pairs.
+- Implementation status: ready; implemented: Yes.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Every region needs exactly one of each listed Rose symbol.
+  - No extra Rose symbols in a region.
+  - No multiple symbol families/colors for solver purposes.
+- Test idea: With symbols A, A, B, B, reject any candidate region that lacks one A and one B.
 - Source URLs: https://camzillasmom.com/the-artisan-of-glimmith-mingle-shape-window-puzzle-solutions/, https://www.gamespew.com/2026/03/the-artisan-of-glimmith-review/, https://steamcommunity.com/stats/4160210/achievements
-- Open questions: confirm how the game handles optional/extra symbol types if a puzzle has multiple symbol families.
+- Open questions: none.
 
 ### `gemini`
 
-- Test idea: two adjacent regions separated by a Gemini marker with candidate shapes line triomino and L triomino; mixed-shape assignments should be rejected.
+- Implementation status: ready; implemented: Yes.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Edge relation clue.
+  - Compares the two regions on opposite sides of the edge.
+  - The same region cannot be on both sides of the edge.
+  - Rotations and reflections count as the same shape.
+- Test idea: Place a Gemini marker between a straight triomino candidate and an L-triomino candidate and reject the mixed assignment.
 - Source URLs: https://camzillasmom.com/the-artisan-of-glimmith-window-3-watermill-puzzle-solutions/, https://camzillasmom.com/the-artisan-of-glimmith-precision-window-puzzle-solutions/
-- Open questions: confirm whether reflections are always accepted or controlled by each puzzle's shape-equivalence setting.
+- Open questions: none.
 
 ### `delta`
 
-- Test idea: two adjacent regions separated by a Delta marker where both can be the same domino shape; same-shape assignments should be rejected.
+- Implementation status: ready; implemented: Yes.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Keep current interpretation as different-shape edge relation unless explicitly corrected.
+  - Edge relation clue.
+  - The same region cannot be on both sides of the edge.
+  - Rotations and reflections count as the same shape.
+- Test idea: Place a Delta marker between two domino regions and reject assignments where both are the same shape class.
 - Source URLs: https://camzillasmom.com/the-artisan-of-glimmith-window-3-watermill-puzzle-solutions/, https://camzillasmom.com/the-artisan-of-glimmith-precision-window-puzzle-solutions/
-- Open questions: same reflection-equivalence question as Gemini.
+- Open questions: none.
 
 ### `polyomino`
 
-- Test idea: a region containing an L-triomino clue should reject all straight-triomino candidates even if they have the same area.
+- Implementation status: ready; implemented: Yes.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Cell clue.
+  - Region containing the clue must match the clue shape.
+  - If multiple Polyomino clues of the same shape are in one region, that is okay.
+  - A region cannot contain two different Polyomino clue shapes.
+  - Polyomino clues may be rotated and reflected.
+  - Drawn orientation does not matter.
+- Test idea: A region containing an L-triomino clue should reject straight-triomino candidates.
 - Source URLs: https://camzillasmom.com/the-artisan-of-glimmith-polyomino-window-puzzle-solutions/, https://camzillasmom.com/the-artisan-of-glimmith-forest-entrance-window-puzzle-solutions/
-- Open questions: confirm whether multiple shape clues in one region are allowed and, if so, whether all must agree.
+- Open questions: none.
 
 ### `mingle_shape`
 
-- Test idea: two neighboring regions can both be the same tetromino; Mingle Shape should reject that solution while allowing non-neighbor duplicates.
+- Implementation status: ready; implemented: Yes.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Global rule.
+  - Edge-adjacent regions must not have the same shape.
+  - Corner-touching does not count.
+  - Rotations/reflections count as the same shape.
+- Test idea: Reject two edge-adjacent regions with the same tetromino while allowing non-adjacent duplicates.
 - Source URLs: https://camzillasmom.com/the-artisan-of-glimmith-mingle-shape-window-puzzle-solutions/, https://camzillasmom.com/the-artisan-of-glimmith-forest-entrance-window-puzzle-solutions/
-- Open questions: confirm whether corner-only contact counts as neighboring for this rule; likely no, unless Bricky-like rules say otherwise.
+- Open questions: none.
 
 ### `area_number`
 
-- Test idea: a number `4` clue in a cell should reject all candidates containing that cell with area other than 4.
+- Implementation status: ready; implemented: Yes.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Cell clue.
+  - A region containing an Area Number clue must have that area.
+  - If a region contains multiple Area Number clues, they must agree.
+  - Values are positive integers only.
+- Test idea: Reject candidates containing a number 4 clue unless their area is exactly 4.
 - Source URLs: https://camzillasmom.com/the-artisan-of-glimmith-area-number-window-puzzle-solutions/, https://steamcommunity.com/stats/4160210/achievements
-- Open questions: confirm behavior for multiple area numbers in the same region.
+- Open questions: none.
 
 ### `palisade`
 
-- Test idea: place a cross-like Palisade clue in a cell; reject any candidate partition that does not put borders on the four clue-adjacent sides required by that variant.
+- Implementation status: ready; implemented: No.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Cell clue.
+  - Describes which sides around the clue cell are borders.
+  - Rotation of the icon does not matter.
+  - empty: 0 border sides around the clue cell.
+  - one_sided: exactly 1 border side.
+  - corner: exactly 2 adjacent border sides.
+  - opposite: exactly 2 opposite border sides.
+  - three_sided: exactly 3 border sides.
+  - full: exactly 4 border sides, a lonely cell.
+  - This is a local candidate/border-pattern rule.
+- Test idea: Reject a partition around a cross-style clue unless all four required adjacent walls are present.
 - Source URLs: https://www.reddit.com/r/TheArtisanOfGlimmith/comments/1s0nkfi/how_was_i_supposed_to_solve_this_puzzle/, https://steamcommunity.com/app/4160210/discussions/search/?q=Palisade, https://steamdb.info/patchnotes/22658641/
-- Open questions: capture exact icon taxonomy and orientation rules from the in-game editor/tutorial before implementation.
+- Open questions: none.
 
 ### `match`
 
-- Test idea: a board with three same-area regions where two can be L triominoes and one a straight triomino; Match should reject the mixed assignment.
+- Implementation status: ready; implemented: No.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Global rule.
+  - All regions in the puzzle must have the same shape.
+  - No groups/subsets.
+  - Rotations/reflections count as the same shape.
+- Test idea: Reject a three-region solution where two regions are L triominoes and the third is a straight triomino.
 - Source URLs: https://steamcommunity.com/app/4160210/discussions/0/796716542888872782/, https://steamcommunity.com/app/4160210/?curator_clanid=7048508, https://steamcommunity.com/stats/4160210/achievements
-- Open questions: confirm whether Match always applies to all regions or can apply to subsets/groups.
+- Open questions: none.
 
 ### `mismatch`
 
-- Test idea: a puzzle with two separable regions that can both be the same pentomino; Mismatch should require choosing different shape classes.
+- Implementation status: ready; implemented: No.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Global rule.
+  - All regions in the puzzle must have distinct shapes.
+  - Rotations/reflections count as the same shape.
+- Test idea: Reject a solution where two regions are the same pentomino shape.
 - Source URLs: https://steamcommunity.com/app/4160210/discussions/0/841752762653913411/, https://steamcommunity.com/app/4160210/reviews/?browsefilter=toprated, https://steamcommunity.com/stats/4160210/achievements
-- Open questions: confirm whether all region sizes participate together or whether Mismatch is grouped by area.
+- Open questions: none.
 
 ### `range`
 
-- Test idea: `range = 2..3` should reject monomino and tetromino candidates while preserving domino and triomino candidates.
+- Implementation status: ready; implemented: No.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Global rule.
+  - Every region area must be in an inclusive range.
+  - Supports min-only, max-only, or min+max.
+  - No complex disjoint ranges.
+- Test idea: With range 2..3, reject monomino and tetromino candidates.
 - Source URLs: https://steamcommunity.com/stats/4160210/achievements, https://steamcommunity.com/app/4160210/discussions/search/?q=Range
-- Open questions: verify exact inclusivity and whether ranges are always global.
+- Open questions: none.
 
 ### `solitude`
 
-- Test idea: with three clue cells on a small board, reject any candidate region containing zero clues or two clues if the rule is exactly-one.
+- Implementation status: ready; implemented: No.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Global rule.
+  - Every region must contain exactly one counted cell symbol/clue.
+  - Counted things are cell-based clues/symbols, e.g. Area Number, Palisade, Polyomino, Compass, Watchtower if represented on a cell/vertex as appropriate.
+  - Rose Windows can count only when the Rose rule has a single symbol type.
+  - Global rule cards do not count.
+- Test idea: Reject a candidate region containing zero counted clues or two counted clues if the rule is exactly-one.
 - Source URLs: https://steamcommunity.com/stats/4160210/achievements, https://steamcommunity.com/app/4160210/discussions/search/?q=Solitude, https://steamcommunity.com/app/4160210/discussions/0/796715232585227442/
-- Open questions: verify exactly one vs at most one; verify whether all clue types count or only special Solitude symbols.
+- Open questions: none.
 
 ### `size_separation`
 
-- Test idea: adjacent regions of areas 3 and 3 should be rejected; adjacent regions of 3 and 4 should be allowed.
+- Implementation status: ready; implemented: No.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Global rule.
+  - Edge-adjacent regions must have different areas.
+  - Corner-touching does not count.
+- Test idea: Reject adjacent regions of areas 3 and 3 while allowing 3 and 4.
 - Source URLs: https://steamcommunity.com/stats/4160210/achievements, https://steamcommunity.com/app/4160210/discussions/search/?q=Size%20Separation
-- Open questions: confirm whether same-size non-adjacent regions may repeat.
+- Open questions: none.
 
 ### `boxy`
 
-- Test idea: a 6-cell region can be a 2 by 3 rectangle or a bent hexomino; Boxy should keep only the rectangle.
+- Implementation status: ready; implemented: No.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Global rule.
+  - Every region must be a filled rectangle.
+  - 1xN bars count as boxy.
+  - A single cell counts as boxy.
+  - No holes.
+- Test idea: Keep a 2 by 3 rectangle candidate and reject a bent six-cell candidate.
 - Source URLs: https://steamcommunity.com/app/4160210/discussions/0/841752762653913411/, https://steamcommunity.com/stats/4160210/achievements
-- Open questions: verify whether a 1 by N line counts as Boxy; discussion evidence suggests it does.
+- Open questions: none.
 
 ### `non_boxy`
 
-- Test idea: reject a 2 by 2 square candidate and allow an L-tetromino candidate of the same area.
+- Implementation status: ready; implemented: No.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Global rule.
+  - Opposite of Boxy.
+  - Filled rectangles, bars, and single cells are forbidden.
+  - Can coexist with Shape Bank.
+- Test idea: Reject a 2 by 2 square and allow an L-tetromino.
 - Source URLs: https://steamcommunity.com/stats/4160210/achievements, https://gamefaqs.gamespot.com/pc/607835-the-artisan-of-glimmith/achievements
-- Open questions: confirm exact rectangle definition and whether monominoes count as boxy.
+- Open questions: none.
 
 ### `bricky`
 
-- Test idea: four regions meeting around one interior vertex should be rejected, while a T-junction with three boundary lines should remain allowed unless Loopy is also active.
+- Implementation status: ready; implemented: No.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Global boundary-graph rule.
+  - Forbids exactly 4 border segments meeting at a grid vertex.
+  - This corresponds to four region corners meeting.
+  - It can include outer border, but outer border usually cannot reach 4.
+- Test idea: Reject four regions meeting around one interior vertex.
 - Source URLs: https://steamcommunity.com/app/4160210/discussions/0/796716542888934780/, https://steamcommunity.com/app/4160210?l=hungarian, https://steamdb.info/patchnotes/22541095/
-- Open questions: confirm if Bricky is exactly "no degree-4 boundary vertex" or a broader no-corner-touching rule.
+- Open questions: none.
 
 ### `loopy`
 
-- Test idea: a partition with a T-junction boundary vertex should be rejected; simple closed loops and degree-4 crossings need separate tests depending on Bricky interaction.
+- Implementation status: ready; implemented: No.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Global boundary-graph rule.
+  - Forbids exactly 3 border segments meeting at a grid vertex.
+  - It does not require loops.
+  - It forbids T-junctions.
+  - It cares about outer boundary.
+  - If Loopy is active but Bricky is not, degree 4 vertices are allowed.
+- Test idea: Reject a partition with a T-junction boundary vertex.
 - Source URLs: https://steamcommunity.com/app/4160210/discussions/0/796716542888934780/, https://steamdb.info/patchnotes/22541095/, https://steamcommunity.com/app/4160210?l=indonesian
-- Open questions: confirm whether Loopy also restricts degree-1 endpoints, whether outer border edges count, and how it combines with Bricky.
+- Open questions: none.
 
 ### `inequality`
 
-- Test idea: an oriented `>` clue between adjacent regions should reject assignments where the left region area is less than or equal to the right region area.
+- Implementation status: ready; implemented: No.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Edge relation clue.
+  - Compares adjacent region areas.
+  - Strict inequality only.
+  - Narrow/small side points to the smaller region.
+  - Equality is invalid.
+- Test idea: Reject a `>` assignment where the left region area is less than or equal to the right region area.
 - Source URLs: https://steamcommunity.com/stats/4160210/achievements, https://steamcommunity.com/app/4160210/discussions/search/?q=Inequality
-- Open questions: verify exact icon orientation in the editor and whether equality is ever allowed by a different symbol.
+- Open questions: none.
 
 ### `difference`
 
-- Test idea: a difference `2` marker between adjacent regions should allow areas 3 and 5, reject 3 and 4, and allow either side to be larger.
+- Implementation status: ready; implemented: Yes.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Edge relation clue.
+  - Compares adjacent regions.
+  - Value is absolute area-size difference.
+  - 0 means equal area, not necessarily same shape.
+- Test idea: With difference 2, allow adjacent areas 3 and 5 and reject 3 and 4.
 - Source URLs: https://steamcommunity.com/app/4160210/discussions/0/840628131190565348/, https://steamcommunity.com/stats/4160210/achievements
-- Open questions: confirm whether the clue is always absolute difference and whether it can appear on non-edge contacts.
+- Open questions: none.
 
 ### `watchtower`
 
-- Test idea: deferred until rule text is captured; likely needs a small clue-cell visibility board.
+- Implementation status: ready; implemented: No.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Vertex/corner clue.
+  - Counts how many distinct regions touch the clue vertex.
+  - Value is 1 to 4.
+  - A 1 means all cells around the vertex that exist belong to the same region.
+  - A 2 means exactly two distinct regions touch that vertex, etc.
+  - User provided tutorial screenshot: "Counts how many regions are touching the clue."
+- Test idea: Deferred until rule text is captured; likely use a small clue-cell visibility board.
 - Source URLs: https://steamcommunity.com/stats/4160210/achievements, https://www.reddit.com/r/TheArtisanOfGlimmith/comments/1sm7y2o/loved_this_puzzle_watchtower_rose_windows/
-- Open questions: determine exact clue meaning, whether it counts cells/regions/symbols, and whether directions are orthogonal only.
+- Open questions: none.
 
 ### `compass`
 
-- Test idea: a compass clue with `E = 2` should only accept candidates where exactly two cells in the clue's region lie in its east sector, using the in-game sector definitions.
+- Implementation status: ready; implemented: No.
+- Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
+- Confirmed mechanics:
+  - Cell clue.
+  - Counts cells of the clue's own region in four directions: N, E, S, W.
+  - Direction means half-plane, not just a ray.
+  - East count = all own-region cells with x greater than clue x.
+  - West count = all own-region cells with x less than clue x.
+  - North count = all own-region cells with y less than clue y.
+  - South count = all own-region cells with y greater than clue y.
+  - A northeast cell contributes to both North and East.
+  - The clue cell itself does not count.
+  - Missing directions mean no restriction.
+  - A fully blank Compass means no directional restriction, but still counts as a clue/symbol for Solitude.
+- Test idea: With an east count of 2, accept only candidates with exactly two region cells in the clue's east sector.
 - Source URLs: https://steamcommunity.com/app/4160210/discussions/search/?q=Compass, https://steamcommunity.com/app/4160210/discussions/0/796715232585227442/, https://steamdb.info/patchnotes/22658641/
-- Open questions: verify sector boundaries, whether the clue cell itself counts, and how blank directions are represented.
+- Open questions: none.
 
 ## Names Not Treated As Rules Yet
 
 | Name | Reason |
 | --- | --- |
-| Forest Entrance, Castle Entrance, Market, Town, Forest | Area/progression names from achievements, not rule mechanics. |
-| Hedge Maze | Confirmed as a window name, but not enough evidence that it is a distinct rule apart from Compass/Palisade-style mechanics. |
-| Spiral Island | Confirmed as a window/area name. No separate mechanic found in text sources. |
-| Secret Garden, Secluded Garden, Restoration progress labels | Area or puzzle-location names from guides/discussions. |
+| Forest Entrance | Area/progression name from achievements and guides, not a distinct rule mechanic. |
+| Castle Entrance | Area/progression name from achievements and guides, not a distinct rule mechanic. |
+| Market | Area/progression name from achievements and guides, not a distinct rule mechanic. |
+| Town | Area/progression name from achievements and guides, not a distinct rule mechanic. |
+| Forest | Area/progression name from achievements and guides, not a distinct rule mechanic. |
+| Hedge Maze | Confirmed as a window name, but sources did not establish a separate rule beyond nearby advanced mechanics. |
+| Spiral Island | Confirmed as a window or area name, with no separate mechanic found in text sources. |
+| Secret Garden | Appears to be a location or puzzle area label. |
+| Secluded Garden | Appears to be a location or puzzle area label. |

@@ -60,7 +60,7 @@ A rule module can provide:
 }
 ```
 
-Only implemented rules should affect solving. Experimental or blocked rules are registered so validation can reject them clearly instead of silently ignoring them.
+Only implemented rules should affect solving. Ready-but-not-implemented rules are registered so validation can reject them clearly as known unsupported rules instead of treating them as unknown IDs. There are currently no blocked rules in the inventory after the 2026-05-16 user-confirmed mechanics update.
 
 Currently implemented rule modules:
 
@@ -106,9 +106,9 @@ Candidate generation lives in `src/core/candidates.js`. Pairwise/global incompat
 - invalid edge constraints,
 - impossible shape-bank entries,
 - impossible legacy or v2 board masks,
-- blocked or unimplemented rule IDs.
+- ready-but-not-implemented rule IDs.
 
-Blocked rules from the research inventory, such as Palisade, Bricky, Loopy, Compass, and Watchtower, should not be guessed. If they appear in puzzle data, solving returns `no_solution` with a not-implemented/semantics-unverified message. UI placeholders are acceptable only if they do not imply solver support.
+Ready-but-not-implemented rules from the inventory, such as Match, Range, Palisade, Compass, and Watchtower, should not affect solving until their modules are implemented. If they appear in puzzle data, solving returns `no_solution` with a known-ready/not-implemented message. UI placeholders are acceptable only if they do not imply solver support.
 
 ## Adding A Rule
 
@@ -122,4 +122,4 @@ Blocked rules from the research inventory, such as Palisade, Bricky, Loopy, Comp
    - a shape-bank or candidate-source extension if candidate generation must change.
 6. Add tests that prove the rule eliminates an otherwise valid solution.
 
-Do not add guessed blocked-rule mechanics. Start with validation and UI placeholders until the rule's exact semantics are verified.
+Do not add solver behavior without tests proving the rule eliminates an otherwise valid solution. For ready-but-not-implemented rules, start with validation and UI placeholders, then add focused mechanics in dedicated implementation steps.

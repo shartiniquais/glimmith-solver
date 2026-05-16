@@ -59,7 +59,7 @@ test("legacy differentShape edge relation becomes a Delta relation clue", () => 
   assert.deepEqual(clue.regionRefs, [{ cell: 0 }, { cell: 1 }]);
 });
 
-test("validation reports unknown rules, blocked rules, invalid clues, and impossible masks", () => {
+test("validation reports unknown rules, ready-unimplemented rules, invalid clues, and impossible masks", () => {
   const result = validatePuzzle({
     version: 2,
     width: 2,
@@ -92,12 +92,12 @@ test("validation reports unknown rules, blocked rules, invalid clues, and imposs
   assert.match(result.errors.join("\n"), /Symbol cell 3 is not active/);
   assert.match(result.errors.join("\n"), /must reference orthogonally adjacent cells/);
   assert.match(result.errors.join("\n"), /Unknown rule id "unknown_rule"/);
-  assert.match(result.errors.join("\n"), /Rule "compass".*semantics are unverified/);
+  assert.match(result.errors.join("\n"), /Rule "compass" is known and ready for implementation, but not implemented in the solver yet/);
   assert.match(result.errors.join("\n"), /Relation clue "bad_relation".*outside the board/);
   assert.match(result.errors.join("\n"), /Shape Bank entry "TooBig" has more cells than the active board/);
 });
 
-test("validation distinguishes unknown, ready-unimplemented, and blocked rules", () => {
+test("validation distinguishes unknown and ready-unimplemented rules", () => {
   const unknown = validatePuzzle({
     width: 1,
     height: 1,
@@ -138,7 +138,21 @@ test("validation distinguishes unknown, ready-unimplemented, and blocked rules",
   });
   assert.equal(polyomino.ok, true);
 
-  for (const id of ["palisade", "bricky", "loopy", "compass", "watchtower"]) {
+  for (const id of [
+    "match",
+    "mismatch",
+    "range",
+    "size_separation",
+    "boxy",
+    "non_boxy",
+    "inequality",
+    "solitude",
+    "palisade",
+    "bricky",
+    "loopy",
+    "compass",
+    "watchtower",
+  ]) {
     const result = validatePuzzle({
       width: 1,
       height: 1,
@@ -147,15 +161,15 @@ test("validation distinguishes unknown, ready-unimplemented, and blocked rules",
       }
     });
     assert.doesNotMatch(result.errors.join("\n"), /Unknown rule id/);
-    assert.match(result.errors.join("\n"), /not implemented because its semantics are unverified/);
+    assert.match(result.errors.join("\n"), /known and ready for implementation, but not implemented in the solver yet/);
   }
 });
 
-test("blocked rules are rejected by the solver with a clear validation message", () => {
+test("ready-unimplemented rules are rejected by the solver with a clear validation message", () => {
   const puzzle = createPuzzle(2, 2);
   puzzle.rules.compass = {};
 
   const result = solvePuzzle(puzzle);
   assert.equal(result.status, "no_solution");
-  assert.match(result.errors.join("\n"), /Rule "compass".*semantics are unverified/);
+  assert.match(result.errors.join("\n"), /Rule "compass" is known and ready for implementation, but not implemented in the solver yet/);
 });

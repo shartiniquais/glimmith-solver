@@ -57,7 +57,6 @@ Gemini, Delta, and Difference use generic relation clues with `regionRefs`, so t
 
 ## Remaining Limitations
 
-- The UI does not yet expose editors for Area Number or Polyomino clues. JSON import/export preserves those generic clues.
 - Area Number candidate sourcing is conservative: without Precision or Shape Bank, it generates candidates for clue areas. Puzzles with unclued regions of other sizes will need another candidate source.
 - Polyomino candidate sourcing uses clue shapes as reusable placement sources. If later evidence shows consumable or grouped shape behavior, that should be added explicitly.
-- Blocked rules remain validation-only and are rejected by the solver with a semantics-unverified message.
+- The remaining ready rules are validation-only and are rejected by the solver with a known-ready/not-implemented message until their solver modules are added.
