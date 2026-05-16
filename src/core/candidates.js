@@ -106,7 +106,7 @@ export function buildCandidateGenerationPlan(puzzle, context = createRuleContext
   };
 }
 
-function makeCandidate(indexes, width, height, source, sourceName = "") {
+function makeCandidate(indexes, width, height, source, sourceName = "", matchOptions = null) {
   const cells = [...indexes].sort((a, b) => a - b);
   const shapeCells = shapeCellsFromIndexes(cells, width);
   return {
@@ -119,6 +119,7 @@ function makeCandidate(indexes, width, height, source, sourceName = "") {
     shapeKeyWithReflections: canonicalShapeKey(shapeCells, { allowRotations: true, allowReflections: true }),
     source,
     sourceName,
+    matchOptions,
     width,
     height
   };
@@ -128,9 +129,13 @@ function generateShapePlacementCandidates(puzzle, shapes, maxCandidates) {
   const candidates = [];
   for (const shape of shapes) {
     if (puzzle.rules.precision?.area > 0 && shape.cells.length !== puzzle.rules.precision.area) continue;
-    const transforms = shapeTransforms(shape.cells, {
+    const transformOptions = shape.options ?? {
       allowRotations: puzzle.shapeBank?.allowRotations !== false,
       allowReflections: puzzle.shapeBank?.allowReflections === true
+    };
+    const transforms = shapeTransforms(shape.cells, {
+      allowRotations: transformOptions.allowRotations !== false,
+      allowReflections: transformOptions.allowReflections === true
     });
     for (const transformed of transforms) {
       const bounds = boundsOfShape(transformed);
@@ -147,7 +152,7 @@ function generateShapePlacementCandidates(puzzle, shapes, maxCandidates) {
             indexes.push(cell);
           }
           if (!ok) continue;
-          candidates.push(makeCandidate(indexes, puzzle.width, puzzle.height, "shapeBank", shape.name));
+          candidates.push(makeCandidate(indexes, puzzle.width, puzzle.height, "shapeBank", shape.name, shape.matchOptions));
           if (candidates.length >= maxCandidates) return candidates;
         }
       }

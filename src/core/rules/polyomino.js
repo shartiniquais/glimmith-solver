@@ -56,7 +56,9 @@ export function polyominoCandidateShapes(context) {
       if (cells.length === 0) return null;
       return {
         name: String(clue.params?.name ?? clue.name ?? clue.id ?? `polyomino_${index + 1}`),
-        cells
+        cells,
+        options: polyominoOptions(clue, context),
+        matchOptions: polyominoOptions(clue, context)
       };
     })
     .filter(Boolean);
@@ -67,7 +69,7 @@ function polyominoClues(context) {
 }
 
 function candidatePolyominoKey(candidate, clue, context) {
-  return canonicalShapeKey(candidate.shapeCells, polyominoOptions(clue, context));
+  return canonicalShapeKey(candidate.shapeCells, candidate.matchOptions ?? polyominoOptions(clue, context));
 }
 
 function polyominoShapeKey(clue, context) {

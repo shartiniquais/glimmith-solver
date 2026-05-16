@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createConstraintModel } from "../src/core/constraints.js";
-import { maskFromIndexes } from "../src/core/geometry.js";
+import { canonicalShapeKey, maskFromIndexes } from "../src/core/geometry.js";
 import { normalizePuzzle } from "../src/core/puzzle.js";
 import { areaNumberRule } from "../src/core/rules/area-number.js";
+import { mingleShapeRule } from "../src/core/rules/mingle-shape.js";
 import { deltaRule, differenceRule, geminiRule } from "../src/core/rules/relations.js";
 import { polyominoRule } from "../src/core/rules/polyomino.js";
 import { precisionRule } from "../src/core/rules/precision.js";
@@ -88,6 +89,81 @@ test("Gemini, Delta, and Difference relation rules add pairwise incompatibilitie
   assertInvalidPairs(differenceRule, "difference", { value: 1 }, candidates, [[0, 1]]);
 });
 
+test("Mingle Shape rejects orthogonally adjacent same-shape candidate pairs", () => {
+  const puzzle = normalizePuzzle({
+    width: 4,
+    height: 1,
+    rules: { mingle_shape: {} }
+  });
+  const candidates = [
+    { ...candidate([0, 1], 4), id: 0, shapeKey: "domino", shapeKeyWithReflections: "domino" },
+    { ...candidate([2, 3], 4), id: 1, shapeKey: "domino", shapeKeyWithReflections: "domino" }
+  ];
+  const context = createRuleContext(puzzle, { candidates });
+  const model = createConstraintModel();
+
+  mingleShapeRule.addConstraints(model, context);
+
+  assert.equal(model.invalidPairs.get(0)?.has(1), true);
+});
+
+test("Mingle Shape allows adjacent different-shape candidate pairs", () => {
+  const puzzle = normalizePuzzle({
+    width: 3,
+    height: 2,
+    rules: { mingle_shape: {} }
+  });
+  const candidates = [
+    { ...candidate([0, 1], 3), id: 0, shapeKey: "domino", shapeKeyWithReflections: "domino" },
+    { ...candidate([2, 5], 3), id: 1, shapeKey: "vertical", shapeKeyWithReflections: "vertical" }
+  ];
+  const context = createRuleContext(puzzle, { candidates });
+  const model = createConstraintModel();
+
+  mingleShapeRule.addConstraints(model, context);
+
+  assert.equal(model.invalidPairs.get(0)?.has(1), undefined);
+});
+
+test("Mingle Shape allows non-adjacent duplicate shapes", () => {
+  const puzzle = normalizePuzzle({
+    width: 5,
+    height: 1,
+    rules: { mingle_shape: {} }
+  });
+  const candidates = [
+    { ...candidate([0, 1], 5), id: 0, shapeKey: "domino", shapeKeyWithReflections: "domino" },
+    { ...candidate([3, 4], 5), id: 1, shapeKey: "domino", shapeKeyWithReflections: "domino" }
+  ];
+  const context = createRuleContext(puzzle, { candidates });
+  const model = createConstraintModel();
+
+  mingleShapeRule.addConstraints(model, context);
+
+  assert.equal(model.invalidPairs.size, 0);
+});
+
+test("Mingle Shape shape comparison respects reflection setting", () => {
+  const puzzle = normalizePuzzle({
+    width: 6,
+    height: 2,
+    rules: {
+      mingle_shape: {},
+      shapeEquivalenceAllowReflections: true
+    }
+  });
+  const candidates = [
+    { ...candidate([1, 2, 6, 7], 6), id: 0 },
+    { ...candidate([3, 4, 10, 11], 6), id: 1 }
+  ];
+  const context = createRuleContext(puzzle, { candidates });
+  const model = createConstraintModel();
+
+  mingleShapeRule.addConstraints(model, context);
+
+  assert.equal(model.invalidPairs.get(0)?.has(1), true);
+});
+
 function assertInvalidPairs(rule, ruleId, cluePatch, candidates, expectedPairs) {
   const puzzle = normalizePuzzle({
     width: 3,
@@ -113,13 +189,14 @@ function assertInvalidPairs(rule, ruleId, cluePatch, candidates, expectedPairs) 
 }
 
 function candidate(cells, width) {
+  const shapeCells = cells.map((cell) => [cell % width, Math.floor(cell / width)]);
   return {
     id: -1,
     cells,
     mask: maskFromIndexes(cells),
     area: cells.length,
-    shapeCells: cells.map((cell) => [cell % width, Math.floor(cell / width)]),
-    shapeKey: "",
-    shapeKeyWithReflections: ""
+    shapeCells,
+    shapeKey: canonicalShapeKey(shapeCells, { allowRotations: true, allowReflections: false }),
+    shapeKeyWithReflections: canonicalShapeKey(shapeCells, { allowRotations: true, allowReflections: true })
   };
 }

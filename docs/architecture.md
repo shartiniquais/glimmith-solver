@@ -70,6 +70,9 @@ Currently implemented rule modules:
 - `gemini`: two-region same-shape relation constraint.
 - `delta`: two-region different-shape relation constraint.
 - `difference`: two-region area-difference relation constraint.
+- `area_number`: cell clue requiring the containing region to have the clue's area.
+- `polyomino`: cell clue requiring the containing region to match the clue shape.
+- `mingle_shape`: pairwise constraint rejecting orthogonally adjacent same-shape regions.
 
 Manual `cut`/`join` edge constraints are handled by `edgeConstraintsRule`. They are editor givens, not Glimmith rule cards.
 

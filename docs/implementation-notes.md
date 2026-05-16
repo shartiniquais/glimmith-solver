@@ -14,6 +14,7 @@ The solver now has registered, data-driven implementations for:
 - `difference`: absolute area-difference two-region relation clue.
 - `area_number`: cell clue whose value must equal the containing region area.
 - `polyomino`: cell clue whose shape must match the containing region shape.
+- `mingle_shape`: pairwise constraint rejecting orthogonally adjacent duplicate shapes. Corner-only contact is not treated as adjacency.
 
 `area_number` and `polyomino` can also act as candidate sources when there is no Precision area and no Shape Bank:
 
@@ -57,8 +58,6 @@ Gemini, Delta, and Difference use generic relation clues with `regionRefs`, so t
 ## Remaining Limitations
 
 - The UI does not yet expose editors for Area Number or Polyomino clues. JSON import/export preserves those generic clues.
-- Mingle Shape remains `ready` but not implemented in this batch because it is not listed in the batch-1 prompt.
 - Area Number candidate sourcing is conservative: without Precision or Shape Bank, it generates candidates for clue areas. Puzzles with unclued regions of other sizes will need another candidate source.
 - Polyomino candidate sourcing uses clue shapes as reusable placement sources. If later evidence shows consumable or grouped shape behavior, that should be added explicitly.
 - Blocked rules remain validation-only and are rejected by the solver with a semantics-unverified message.
-

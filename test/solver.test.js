@@ -166,6 +166,98 @@ test("Shape Bank and Delta can prove no solution", () => {
   assert.equal(result.status, "no_solution");
 });
 
+test("Mingle Shape rejects adjacent same-shape regions", () => {
+  const puzzle = createPuzzle(4, 1);
+  puzzle.rules.area = 2;
+  puzzle.rules.mingle_shape = {};
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "no_solution");
+});
+
+test("Mingle Shape allows adjacent different-shape regions", () => {
+  let puzzle = createPuzzle(3, 3);
+  puzzle.rules.area = 3;
+  puzzle.rules.mingle_shape = {};
+  puzzle.active = [true, true, true, true, true, false, true, false, false];
+  puzzle.activeCells = [0, 1, 2, 3, 4, 6];
+  puzzle = setEdgeState(puzzle, 0, 3, "join");
+  puzzle = setEdgeState(puzzle, 3, 6, "join");
+  puzzle = setEdgeState(puzzle, 1, 2, "join");
+  puzzle = setEdgeState(puzzle, 1, 4, "join");
+  puzzle = setEdgeState(puzzle, 0, 1, "cut");
+  puzzle = setEdgeState(puzzle, 3, 4, "cut");
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "unique_solution");
+  assert.deepEqual(result.solutions[0].regions.map((region) => region.cells), [[0, 3, 6], [1, 2, 4]]);
+});
+
+test("Mingle Shape allows non-adjacent duplicate shapes", () => {
+  const puzzle = createPuzzle(5, 1);
+  puzzle.rules.area = 2;
+  puzzle.rules.mingle_shape = {};
+  puzzle.active[2] = false;
+  puzzle.activeCells = [0, 1, 3, 4];
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "unique_solution");
+  assert.deepEqual(result.solutions[0].regions.map((region) => region.cells), [[0, 1], [3, 4]]);
+});
+
+test("Mingle Shape respects reflection equivalence", () => {
+  const puzzle = createPuzzle(4, 2);
+  puzzle.rules.area = 3;
+  puzzle.rules.mingle_shape = {};
+  puzzle.rules.shapeEquivalenceAllowReflections = true;
+  puzzle.active = [true, true, true, false, true, true, false, false];
+  puzzle.activeCells = [0, 1, 2, 4, 5];
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "no_solution");
+});
+
+test("Polyomino clue placement uses clue reflection settings", () => {
+  const basePuzzle = createPuzzle(3, 3);
+  basePuzzle.rules.area = 0;
+  basePuzzle.rules.polyomino = { allowRotations: false, allowReflections: false };
+  basePuzzle.active = [true, true, true, false, true, true, false, false, true];
+  basePuzzle.activeCells = [0, 1, 2, 4, 5, 8];
+  basePuzzle.clues = [
+    {
+      id: "left_chiral",
+      type: "cell",
+      ruleId: "polyomino",
+      location: { type: "cell", cell: 0 },
+      params: { shape: [[0, 0], [1, 0], [0, 1]], allowRotations: false, allowReflections: false }
+    },
+    {
+      id: "vertical",
+      type: "cell",
+      ruleId: "polyomino",
+      location: { type: "cell", cell: 2 },
+      params: { shape: [[0, 0], [0, 1], [0, 2]], allowRotations: false, allowReflections: false }
+    }
+  ];
+
+  const withoutReflections = solvePuzzle(basePuzzle, { limit: 2 });
+  assert.equal(withoutReflections.status, "no_solution");
+
+  const withReflections = createPuzzle(3, 2);
+  Object.assign(withReflections, basePuzzle);
+  withReflections.clues = [
+    {
+      ...basePuzzle.clues[0],
+      params: { ...basePuzzle.clues[0].params, allowReflections: true }
+    },
+    basePuzzle.clues[1]
+  ];
+
+  const result = solvePuzzle(withReflections, { limit: 2 });
+  assert.equal(result.status, "unique_solution");
+  assert.deepEqual(result.solutions[0].regions.map((region) => region.cells), [[0, 1, 4], [2, 5, 8]]);
+});
+
 test("next-step explainer finds a forced join", () => {
   const puzzle = createPuzzle(2, 2);
   puzzle.rules.area = 4;

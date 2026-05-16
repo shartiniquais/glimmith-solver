@@ -107,20 +107,14 @@ test("validation distinguishes unknown, ready-unimplemented, and blocked rules",
   });
   assert.match(unknown.errors.join("\n"), /Unknown rule id "imaginary_rule"/);
 
-  for (const id of ["mingle_shape"]) {
-    const result = validatePuzzle({
-      width: 1,
-      height: 1,
-      rules: {
-        [id]: {}
-      }
-    });
-    assert.doesNotMatch(result.errors.join("\n"), /Unknown rule id/);
-    assert.match(
-      result.errors.join("\n"),
-      new RegExp(`Rule "${id}" is known and ready for implementation, but not implemented in the solver yet\\.`),
-    );
-  }
+  const mingleShape = validatePuzzle({
+    width: 1,
+    height: 1,
+    rules: {
+      mingle_shape: {}
+    }
+  });
+  assert.equal(mingleShape.ok, true);
 
   const areaNumber = validatePuzzle({
     width: 1,
