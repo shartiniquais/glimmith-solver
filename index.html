@@ -7,179 +7,224 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header class="app-header">
-      <div>
-        <h1>Glimmith Solver Prototype</h1>
-        <p>Draw the active glass, add simple rules, then solve or ask for the next forced border.</p>
-      </div>
-      <div class="header-actions">
-        <button id="exportJsonButton" type="button">Export JSON</button>
-        <button id="importJsonButton" type="button">Import JSON</button>
-      </div>
-    </header>
-
-    <main class="layout">
-      <section class="panel controls">
-        <h2>Board</h2>
-        <div class="row compact">
-          <label>Width <input id="widthInput" type="number" min="1" max="14" value="6" /></label>
-          <label>Height <input id="heightInput" type="number" min="1" max="14" value="6" /></label>
-          <button id="resizeButton" type="button">Apply</button>
+    <div class="app-shell">
+      <header class="top-bar">
+        <div class="brand">
+          <h1>Glimmith Solver</h1>
+          <span>Visual region puzzle editor</span>
         </div>
-
-        <h2>Tools</h2>
-        <div class="tool-grid" role="group" aria-label="Drawing tools">
-          <button class="tool active" data-tool="cell" type="button">Active / hole cells</button>
-          <button class="tool" data-tool="symbol" type="button">Cycle symbols</button>
-          <button class="tool" data-tool="edge" type="button">Cycle borders</button>
-          <button class="tool" data-tool="relation" type="button">Relation pair clue</button>
-          <button class="tool" data-tool="areaNumber" type="button">Area number clue</button>
-          <button class="tool" data-tool="polyomino" type="button">Polyomino clue</button>
-          <button class="tool" data-tool="eraseClue" type="button">Erase clue</button>
+        <div id="themeToggle" class="theme-toggle segmented" role="radiogroup" aria-label="Theme">
+          <label><input id="themeLightInput" name="themePreference" type="radio" value="light" /> Light</label>
+          <label><input id="themeDarkInput" name="themePreference" type="radio" value="dark" /> Dark</label>
+          <label><input id="themeSystemInput" name="themePreference" type="radio" value="system" /> System</label>
         </div>
-        <p class="hint">Border cycle: unknown → cut → join → Gemini/same-shape → Delta/different-shape.</p>
-
-        <div class="tool-help">
-          <h3>Tool Legend</h3>
-          <dl>
-            <dt>Active / hole cells</dt>
-            <dd>Toggle whether a cell belongs to the puzzle mask.</dd>
-            <dt>Cycle symbols</dt>
-            <dd>Cycle cell symbols used by Rose Windows.</dd>
-            <dt>Cycle borders</dt>
-            <dd>Cycle cut, join, Gemini, and Delta edge marks.</dd>
-            <dt>Relation pair clue</dt>
-            <dd>Click two active cells to add Gemini, Delta, or Difference relation clues.</dd>
-            <dt>Area number clue</dt>
-            <dd>Place a numeric region-area clue on an active cell.</dd>
-            <dt>Polyomino clue</dt>
-            <dd>Place the drawn polyomino shape clue on an active cell.</dd>
-            <dt>Erase clue</dt>
-            <dd>Remove Area Number, Polyomino, or relation clues without changing edge cut/join constraints.</dd>
-            <dt>Screenshot tracing</dt>
-            <dd>Load a background image and adjust it while tracing cells and clues manually.</dd>
-          </dl>
-        </div>
-
-        <h2>Rule Palette</h2>
-        <div id="rulePalette" class="rule-palette" aria-label="Rule palette"></div>
-
-        <h2>Rules</h2>
-        <label class="stacked">Precision area
-          <input id="areaInput" type="number" min="0" max="20" value="4" />
-        </label>
-        <label class="stacked">Rose labels required per region
-          <input id="roseInput" type="text" placeholder="Example: ABC" />
-        </label>
-
-        <div class="row checkbox-row">
-          <label><input id="rotationsInput" type="checkbox" checked /> Shape-bank rotations</label>
-          <label><input id="reflectionsInput" type="checkbox" /> Shape-bank reflections</label>
-        </div>
-        <label class="checkbox-row single"><input id="shapeEquivRotationsInput" type="checkbox" checked /> Treat rotated regions as same shape for comparisons</label>
-        <label class="checkbox-row single"><input id="shapeEquivReflectionsInput" type="checkbox" /> Treat reflected regions as same shape for comparisons</label>
-
-        <h2>Cell Clues</h2>
-        <label class="stacked">Area number value
-          <input id="areaClueValueInput" type="number" min="1" max="20" value="4" />
-        </label>
-        <label class="stacked">Relation clue type
-          <select id="relationRuleInput">
-            <option value="gemini">Gemini / same shape</option>
-            <option value="delta">Delta / different shape</option>
-            <option value="difference">Difference / area gap</option>
-          </select>
-        </label>
-        <label class="stacked">Difference value
-          <input id="differenceValueInput" type="number" min="0" max="20" value="1" />
-        </label>
-        <p id="relationPickHint" class="hint">Choose Relation pair clue, then click two active cells in different regions.</p>
-
-        <div class="mini-editor">
-          <div class="mini-editor-header">
-            <strong>Polyomino clue shape</strong>
-            <button id="clearPolyominoButton" type="button">Clear</button>
-          </div>
-          <div id="polyominoClueGrid" class="mini-grid" aria-label="Polyomino clue shape editor"></div>
-          <div class="row checkbox-row">
-            <label><input id="polyominoRotationsInput" type="checkbox" checked /> Rotations</label>
-            <label><input id="polyominoReflectionsInput" type="checkbox" /> Reflections</label>
-          </div>
-          <p class="hint">Draw a shape here, then place it with the Polyomino clue tool.</p>
-        </div>
-
-        <label class="stacked">Shape bank
-          <textarea id="shapeBankInput" spellcheck="false" placeholder="O4: 0,0 1,0 0,1 1,1"></textarea>
-        </label>
-        <div class="mini-editor">
-          <div class="mini-editor-header">
-            <strong>Draw shape-bank entry</strong>
-            <button id="clearShapeDraftButton" type="button">Clear</button>
-          </div>
-          <label class="stacked">Shape name
-            <input id="shapeNameInput" type="text" value="Shape1" />
-          </label>
-          <div id="shapeMiniGrid" class="mini-grid" aria-label="Shape bank mini-grid editor"></div>
-          <div class="row">
-            <button id="addShapeButton" type="button">Add drawn shape</button>
-          </div>
-        </div>
-        <button id="tetrominoButton" type="button">Load tetromino preset</button>
-
-        <h2>Screenshot Trace</h2>
-        <label class="stacked">Background image
-          <input id="screenshotInput" type="file" accept="image/*" />
-        </label>
-        <label class="stacked">Image opacity
-          <input id="screenshotOpacityInput" type="range" min="0" max="1" step="0.05" value="0.35" />
-        </label>
-        <div class="row compact">
-          <label>X <input id="screenshotXInput" type="number" step="5" value="0" /></label>
-          <label>Y <input id="screenshotYInput" type="number" step="5" value="0" /></label>
-          <label>Scale <input id="screenshotScaleInput" type="number" min="0.1" max="5" step="0.05" value="1" /></label>
-          <label>Rotate <input id="screenshotRotationInput" type="number" step="1" value="0" /></label>
-        </div>
-        <button id="clearScreenshotButton" type="button">Clear screenshot</button>
-
-        <h2>Search</h2>
-        <label class="stacked">Max solver nodes
-          <input id="maxNodesInput" type="number" min="1000" step="1000" value="250000" />
-        </label>
-        <div class="row">
+        <div class="top-actions">
+          <button id="importJsonButton" type="button">Import JSON</button>
+          <button id="exportJsonButton" type="button">Export JSON</button>
           <button id="solveButton" class="primary" type="button">Solve</button>
-          <button id="nextStepButton" type="button">Next logic step</button>
-          <button id="explainAllButton" type="button">Explain all</button>
-          <button id="applyStepButton" type="button" disabled>Apply step</button>
+          <button id="nextStepButton" type="button">Next step</button>
         </div>
-        <div class="row">
-          <button id="showCandidatesButton" type="button">Show candidates for selected cell</button>
-          <button id="exportTraceButton" type="button">Export trace JSON</button>
-          <button id="copyTraceButton" type="button">Copy trace text</button>
-        </div>
-        <button id="clearSolutionButton" type="button">Clear overlay</button>
-      </section>
+      </header>
 
-      <section class="board-wrap">
-        <div class="panel board-panel">
-          <svg id="boardSvg" role="img" aria-label="Puzzle board"></svg>
-        </div>
-        <div class="legend panel">
-          <span><b class="legend-cut"></b> Cut</span>
-          <span><b class="legend-join"></b> Join</span>
-          <span><b class="legend-gemini"></b> Gemini / same shape</span>
-          <span><b class="legend-delta"></b> Delta / different shape</span>
-        </div>
-      </section>
+      <main class="workspace">
+        <aside class="panel sidebar" aria-label="Workflow controls">
+          <details class="workflow-section" open>
+            <summary>Board</summary>
+            <div class="section-body">
+              <div class="row compact">
+                <label>Width <input id="widthInput" type="number" min="1" max="14" value="6" /></label>
+                <label>Height <input id="heightInput" type="number" min="1" max="14" value="6" /></label>
+                <button id="resizeButton" type="button">Apply</button>
+              </div>
+              <div class="tool-grid" role="group" aria-label="Drawing tools">
+                <button class="tool active" data-tool="cell" type="button">Active / hole cells</button>
+                <button class="tool" data-tool="symbol" type="button">Cycle symbols</button>
+                <button class="tool" data-tool="edge" type="button">Cycle borders</button>
+                <button class="tool" data-tool="relation" type="button">Relation pair clue</button>
+                <button class="tool" data-tool="areaNumber" type="button">Area number clue</button>
+                <button class="tool" data-tool="polyomino" type="button">Polyomino clue</button>
+                <button class="tool" data-tool="eraseClue" type="button">Erase clue</button>
+              </div>
+            </div>
+          </details>
 
-      <section class="panel output">
-        <h2>Result</h2>
-        <div id="validationBox" class="validation-box">No validation issues.</div>
-        <div id="statusBox" class="status">Ready.</div>
-        <pre id="solutionText"></pre>
-        <h2>Puzzle JSON</h2>
-        <textarea id="jsonBox" spellcheck="false"></textarea>
-      </section>
-    </main>
+          <details class="workflow-section" open>
+            <summary>Rules</summary>
+            <div class="section-body">
+              <div id="rulePalette" class="rule-palette" aria-label="Rule palette"></div>
+              <div class="field-grid">
+                <label class="stacked">Precision area
+                  <input id="areaInput" type="number" min="0" max="20" value="4" />
+                </label>
+                <label class="stacked">Rose labels required per region
+                  <input id="roseInput" type="text" placeholder="Example: ABC" />
+                </label>
+              </div>
+              <label class="checkbox-row single"><input id="shapeEquivRotationsInput" type="checkbox" checked /> Rotated regions compare as the same shape</label>
+              <label class="checkbox-row single"><input id="shapeEquivReflectionsInput" type="checkbox" /> Reflected regions compare as the same shape</label>
+            </div>
+          </details>
+
+          <details class="workflow-section" open>
+            <summary>Clues</summary>
+            <div class="section-body">
+              <label class="stacked">Area number value
+                <input id="areaClueValueInput" type="number" min="1" max="20" value="4" />
+              </label>
+              <label class="stacked">Relation clue type
+                <select id="relationRuleInput">
+                  <option value="gemini">Gemini / same shape</option>
+                  <option value="delta">Delta / different shape</option>
+                  <option value="difference">Difference / area gap</option>
+                </select>
+              </label>
+              <label class="stacked">Difference value
+                <input id="differenceValueInput" type="number" min="0" max="20" value="1" />
+              </label>
+              <p id="relationPickHint" class="hint">Choose Relation pair clue, then click two active cells in different regions.</p>
+              <div class="mini-editor">
+                <div class="mini-editor-header">
+                  <strong>Polyomino clue shape</strong>
+                  <button id="clearPolyominoButton" type="button">Clear</button>
+                </div>
+                <div id="polyominoClueGrid" class="mini-grid" aria-label="Polyomino clue shape editor"></div>
+                <div class="row checkbox-row">
+                  <label><input id="polyominoRotationsInput" type="checkbox" checked /> Rotations</label>
+                  <label><input id="polyominoReflectionsInput" type="checkbox" /> Reflections</label>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details class="workflow-section" open>
+            <summary>Shapes</summary>
+            <div class="section-body">
+              <div id="shapeBankList" class="shape-bank-list" aria-label="Shape bank list"></div>
+              <div class="mini-editor">
+                <div class="mini-editor-header">
+                  <strong>Draw shape-bank entry</strong>
+                  <button id="clearShapeDraftButton" type="button">Clear</button>
+                </div>
+                <label class="stacked">Shape name
+                  <input id="shapeNameInput" type="text" value="Shape1" />
+                </label>
+                <div id="shapeMiniGrid" class="mini-grid" aria-label="Shape bank mini-grid editor"></div>
+                <div class="row">
+                  <button id="addShapeButton" type="button">Add drawn shape</button>
+                  <button id="tetrominoButton" type="button">Load tetromino preset</button>
+                </div>
+              </div>
+              <div class="row checkbox-row">
+                <label><input id="rotationsInput" type="checkbox" checked /> Shape-bank rotations</label>
+                <label><input id="reflectionsInput" type="checkbox" /> Shape-bank reflections</label>
+              </div>
+              <details class="advanced-panel">
+                <summary>Advanced raw shape text</summary>
+                <label class="stacked">Shape bank
+                  <textarea id="shapeBankInput" spellcheck="false" placeholder="O4: 0,0 1,0 0,1 1,1"></textarea>
+                </label>
+              </details>
+            </div>
+          </details>
+
+          <details class="workflow-section">
+            <summary>Screenshot tracing</summary>
+            <div class="section-body">
+              <label class="stacked">Background image
+                <input id="screenshotInput" type="file" accept="image/*" />
+              </label>
+              <label class="stacked">Image opacity
+                <input id="screenshotOpacityInput" type="range" min="0" max="1" step="0.05" value="0.35" />
+              </label>
+              <div class="row compact">
+                <label>X <input id="screenshotXInput" type="number" step="5" value="0" /></label>
+                <label>Y <input id="screenshotYInput" type="number" step="5" value="0" /></label>
+                <label>Scale <input id="screenshotScaleInput" type="number" min="0.1" max="5" step="0.05" value="1" /></label>
+                <label>Rotate <input id="screenshotRotationInput" type="number" step="1" value="0" /></label>
+              </div>
+              <button id="clearScreenshotButton" type="button">Clear screenshot</button>
+            </div>
+          </details>
+
+          <details class="workflow-section" open>
+            <summary>Solver / explanations</summary>
+            <div class="section-body">
+              <label class="stacked">Max solver nodes
+                <input id="maxNodesInput" type="number" min="1000" step="1000" value="250000" />
+              </label>
+              <div class="row">
+                <button id="explainAllButton" type="button">Explain all</button>
+                <button id="applyStepButton" type="button" disabled>Apply step</button>
+              </div>
+              <div class="row">
+                <button id="showCandidatesButton" type="button">Show candidates for selected cell</button>
+                <button id="exportTraceButton" type="button">Export trace JSON</button>
+                <button id="copyTraceButton" type="button">Copy trace text</button>
+              </div>
+              <button id="clearSolutionButton" type="button">Clear overlay</button>
+              <label class="stacked json-field">Puzzle JSON
+                <textarea id="jsonBox" spellcheck="false"></textarea>
+              </label>
+            </div>
+          </details>
+        </aside>
+
+        <section class="board-workspace" aria-label="Board editor">
+          <section id="currentToolBanner" class="tool-banner" aria-live="polite">
+            <div>
+              <span class="eyebrow">Current tool</span>
+              <h2 id="currentToolName">Active / hole cells</h2>
+              <p id="currentToolDescription">Click a cell to toggle whether it belongs to the puzzle.</p>
+            </div>
+            <p id="currentToolParams" class="tool-params">Click again to undo.</p>
+          </section>
+          <div class="panel board-panel">
+            <svg id="boardSvg" role="img" aria-label="Puzzle board"></svg>
+          </div>
+          <div class="legend panel">
+            <span><b class="legend-cut"></b> Cut</span>
+            <span><b class="legend-join"></b> Join</span>
+            <span><b class="legend-gemini"></b> Gemini / same shape</span>
+            <span><b class="legend-delta"></b> Delta / different shape</span>
+          </div>
+        </section>
+
+        <aside class="panel inspector" aria-label="Inspector and validation">
+          <section>
+            <h2>Inspector</h2>
+            <div id="inspectorBox" class="inspector-box"></div>
+          </section>
+          <section>
+            <h2>Validation</h2>
+            <div id="validationBox" class="validation-box">No validation issues.</div>
+          </section>
+          <section>
+            <h2>Result</h2>
+            <div id="statusBox" class="status">Ready.</div>
+            <pre id="solutionText"></pre>
+          </section>
+          <section class="tool-help">
+            <h2>Legend</h2>
+            <dl>
+              <dt>Active / hole cells</dt>
+              <dd>Active cells are partitioned by the solver; holes are ignored.</dd>
+              <dt>Cycle symbols</dt>
+              <dd>Cell symbols feed Rose Windows.</dd>
+              <dt>Cycle borders</dt>
+              <dd>Edge marks cycle through cut, join, Gemini, and Delta.</dd>
+              <dt>Relation pair clue</dt>
+              <dd>Click two cells to relate their eventual regions.</dd>
+              <dt>Area number clue</dt>
+              <dd>Places a fixed region-size clue on one cell.</dd>
+              <dt>Polyomino clue</dt>
+              <dd>Places a drawn shape clue on one cell.</dd>
+              <dt>Screenshot tracing</dt>
+              <dd>Use an image as a manual tracing layer behind the grid.</dd>
+            </dl>
+          </section>
+        </aside>
+      </main>
+    </div>
 
     <script type="module" src="src/ui/app.js"></script>
   </body>

@@ -34,3 +34,36 @@ export const IMPLEMENTED_RULE_VISUALS = Object.freeze({
   polyomino: { type: "placementTool", target: "polyomino" },
   mingle_shape: { type: "paletteToggle", target: "rulePalette" }
 });
+
+export const RULE_GROUPS = Object.freeze([
+  Object.freeze({
+    title: "Region size",
+    ids: Object.freeze(["precision", "area_number", "difference", "range", "size_separation"])
+  }),
+  Object.freeze({
+    title: "Shapes",
+    ids: Object.freeze([
+      "shape_bank",
+      "polyomino",
+      "gemini",
+      "delta",
+      "mingle_shape",
+      "match",
+      "mismatch",
+      "boxy",
+      "non_boxy"
+    ])
+  }),
+  Object.freeze({
+    title: "Symbols / clues",
+    ids: Object.freeze(["rose_window", "solitude"])
+  }),
+  Object.freeze({
+    title: "Borders / graph rules",
+    ids: Object.freeze(["palisade", "bricky", "loopy"])
+  }),
+  Object.freeze({
+    title: "Direction / visibility",
+    ids: Object.freeze(["compass", "watchtower", "inequality"])
+  })
+]);

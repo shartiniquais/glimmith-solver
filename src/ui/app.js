@@ -20,7 +20,16 @@ import {
 } from "../core/explain.js";
 import { validatePuzzle } from "../core/validation.js";
 import { RULE_REGISTRY } from "../core/rules/registry.js";
-import { RULE_HELP } from "./rule-ui-metadata.js";
+import { RULE_GROUPS, RULE_HELP } from "./rule-ui-metadata.js";
+import { applyThemePreference, loadThemePreference, saveThemePreference } from "./theme.js";
+import {
+  appendShapeBankEntry,
+  removeShapeBankEntryAt,
+  shapeBankEntryFromCells,
+  shapeBankTextToEntries,
+  shapePreviewViewBox
+} from "./shape-bank-ui.js";
+import { inspectorStateForSelection } from "./inspector-state.js";
 
 const CELL = 46;
 const SVG_PAD = 10;
@@ -32,6 +41,8 @@ let currentTool = "cell";
 let currentSolution = null;
 let lastStep = null;
 let selectedCell = null;
+let selectedClueId = null;
+let lastCandidateSummary = null;
 let explanationTrace = [];
 let relationFirstCell = null;
 let shapeDraftCells = new Set(["0,0", "1,0", "0,1", "1,1"]);
@@ -92,14 +103,27 @@ const el = {
   jsonBox: document.getElementById("jsonBox"),
   validationBox: document.getElementById("validationBox"),
   statusBox: document.getElementById("statusBox"),
-  solutionText: document.getElementById("solutionText")
+  solutionText: document.getElementById("solutionText"),
+  themeToggle: document.getElementById("themeToggle"),
+  currentToolName: document.getElementById("currentToolName"),
+  currentToolDescription: document.getElementById("currentToolDescription"),
+  currentToolParams: document.getElementById("currentToolParams"),
+  inspectorBox: document.getElementById("inspectorBox"),
+  shapeBankList: document.getElementById("shapeBankList")
 };
 
+setupTheme();
 bindEvents();
 syncFormFromPuzzle();
 render();
 
 function bindEvents() {
+  el.themeToggle.addEventListener("change", (event) => {
+    if (event.target.name !== "themePreference") return;
+    const preference = saveThemePreference(event.target.value);
+    applyThemePreference(preference);
+  });
+
   document.querySelectorAll(".tool").forEach((button) => {
     button.addEventListener("click", () => setCurrentTool(button.dataset.tool));
   });
@@ -138,6 +162,52 @@ function bindEvents() {
   el.shapeEquivRotationsInput.addEventListener("change", updateRulesFromForm);
   el.shapeEquivReflectionsInput.addEventListener("change", updateRulesFromForm);
   el.shapeBankInput.addEventListener("input", updateRulesFromForm);
+  el.shapeBankList.addEventListener("click", (event) => {
+    const deleteButton = event.target.closest("[data-delete-shape-index]");
+    if (!deleteButton) return;
+    el.shapeBankInput.value = removeShapeBankEntryAt(el.shapeBankInput.value, Number(deleteButton.dataset.deleteShapeIndex));
+    updateRulesFromForm(false);
+    renderStatus("Shape removed from the Shape Bank.", "good");
+    render();
+  });
+
+  el.inspectorBox.addEventListener("click", (event) => {
+    const deleteButton = event.target.closest("[data-delete-clue-id]");
+    if (deleteButton) {
+      puzzle = removeClueById(deleteButton.dataset.deleteClueId);
+      selectedClueId = null;
+      clearComputed();
+      renderStatus("Clue removed.", "good");
+      render();
+    }
+  });
+
+  el.inspectorBox.addEventListener("change", (event) => {
+    const target = event.target;
+    const clueId = target.dataset.clueId;
+    if (!clueId) return;
+
+    if (target.dataset.areaValue !== undefined) {
+      const value = Math.max(1, Number(target.value) || 1);
+      puzzle = updateClueById(clueId, (clue) => ({ ...clue, value, params: { ...(clue.params ?? {}), value } }));
+      clearComputed();
+      render();
+    }
+    if (target.dataset.polyOption) {
+      puzzle = updateClueById(clueId, (clue) => ({
+        ...clue,
+        params: { ...(clue.params ?? {}), [target.dataset.polyOption]: target.checked }
+      }));
+      clearComputed();
+      render();
+    }
+    if (target.dataset.differenceValue !== undefined) {
+      const value = Math.max(0, Number(target.value) || 0);
+      puzzle = updateClueById(clueId, (clue) => ({ ...clue, value, params: { ...(clue.params ?? {}), difference: value } }));
+      clearComputed();
+      render();
+    }
+  });
 
   el.relationRuleInput.addEventListener("change", () => {
     relationFirstCell = null;
@@ -162,15 +232,15 @@ function bindEvents() {
     renderShapeMiniGrid();
   });
   el.addShapeButton.addEventListener("click", () => {
-    const line = shapeBankLineFromDraft();
-    if (!line) {
+    const entry = shapeBankEntryFromCells(el.shapeNameInput.value, shapeCellsFromDraft(shapeDraftCells));
+    if (entry.cells.length === 0) {
       renderStatus("Draw at least one shape-bank cell before adding a shape.", "warn");
       return;
     }
-    el.shapeBankInput.value = appendLine(el.shapeBankInput.value, line);
+    el.shapeBankInput.value = appendShapeBankEntry(el.shapeBankInput.value, entry);
     updateRulesFromForm(false);
     el.shapeNameInput.value = `Shape${shapeBankLineCount() + 1}`;
-    renderStatus("Drawn shape added to the Shape Bank text.", "good");
+    renderStatus("Drawn shape added to the Shape Bank.", "good");
     render();
   });
 
@@ -218,8 +288,15 @@ function bindEvents() {
     const cell = event.target.dataset.cell;
     if (clueId && currentTool === "eraseClue") {
       puzzle = removeClueById(clueId);
+      selectedClueId = null;
       clearComputed();
       renderStatus("Clue removed.", "good");
+      render();
+      return;
+    }
+    if (clueId) {
+      selectedClueId = clueId;
+      selectedCell = cell === undefined ? selectedCell : Number(cell);
       render();
       return;
     }
@@ -283,7 +360,9 @@ function bindEvents() {
       return;
     }
     const result = describeCandidatesForCell(puzzle, selectedCell, { maxNodes: maxNodes() });
+    lastCandidateSummary = { cell: selectedCell, count: result.count };
     showCandidatesForSelectedCell(result);
+    renderInspector();
   });
 
   el.exportTraceButton.addEventListener("click", () => {
@@ -336,8 +415,22 @@ function bindEvents() {
   });
 }
 
+function setupTheme() {
+  const preference = loadThemePreference();
+  const input = el.themeToggle.querySelector(`input[value="${preference}"]`) ?? el.themeToggle.querySelector('input[value="system"]');
+  if (input) input.checked = true;
+  applyThemePreference(preference);
+
+  const media = window.matchMedia?.("(prefers-color-scheme: dark)");
+  media?.addEventListener?.("change", () => {
+    const checked = el.themeToggle.querySelector('input[name="themePreference"]:checked');
+    if ((checked?.value ?? "system") === "system") applyThemePreference("system");
+  });
+}
+
 function handleCellClick(cell) {
   selectedCell = cell;
+  selectedClueId = null;
   if (!puzzle.active[cell] && currentTool !== "cell") {
     renderStatus(`Cell ${cellLabel(cell, puzzle.width)} is inactive. Activate it before placing clues.`, "warn");
     return;
@@ -548,43 +641,113 @@ function updateMingleOption(option, checked) {
 function clearComputed() {
   currentSolution = null;
   lastStep = null;
+  lastCandidateSummary = null;
   el.applyStepButton.disabled = true;
 }
 
 function render() {
   renderBoard();
+  renderToolBanner();
   renderRulePalette();
+  renderShapeBankList();
   renderShapeMiniGrid();
   renderPolyominoGrid();
   renderValidation();
+  renderInspector();
   updateRelationHint();
 }
 
+function renderToolBanner() {
+  const info = toolInfo(currentTool);
+  el.currentToolName.textContent = info.name;
+  el.currentToolDescription.textContent = info.description;
+  el.currentToolParams.textContent = info.params;
+}
+
+function toolInfo(tool) {
+  const common = {
+    cell: {
+      name: "Active / hole cells",
+      description: "Click a cell to toggle whether it belongs to the puzzle mask.",
+      params: "Click the same cell again to undo the toggle."
+    },
+    symbol: {
+      name: "Cycle symbols",
+      description: "Click an active cell to cycle symbols used by Rose Windows.",
+      params: `Current cycle is blank, A, B, C, D. Click until the symbol is removed.`
+    },
+    edge: {
+      name: "Cycle borders",
+      description: "Click a border between active cells to cycle cut, join, Gemini, and Delta edge marks.",
+      params: "Edge marks are removed by cycling back to unknown."
+    },
+    relation: {
+      name: "Relation pair clue",
+      description: "Click two active cells to add a relation clue between their eventual regions.",
+      params: `${ruleLabel(el.relationRuleInput.value)}${el.relationRuleInput.value === "difference" ? `, value ${Number(el.differenceValueInput.value) || 0}` : ""}. Delete relation clues with Erase clue or the inspector.`
+    },
+    areaNumber: {
+      name: "Area number clue",
+      description: "Click an active cell to place or replace its Area Number clue.",
+      params: `Value ${Math.max(1, Number(el.areaClueValueInput.value) || 1)}. Edit or remove selected clues in the inspector.`
+    },
+    polyomino: {
+      name: "Polyomino clue",
+      description: "Click an active cell to place the drawn polyomino clue.",
+      params: `${polyominoDraftCells.size} drawn cells, rotations ${el.polyominoRotationsInput.checked ? "on" : "off"}, reflections ${el.polyominoReflectionsInput.checked ? "on" : "off"}.`
+    },
+    eraseClue: {
+      name: "Erase clue",
+      description: "Click an Area Number, Polyomino, or relation clue to remove it.",
+      params: "Cut and join edge constraints stay controlled by the Cycle borders tool."
+    }
+  };
+  return common[tool] ?? common.cell;
+}
+
 function renderRulePalette() {
-  el.rulePalette.innerHTML = Object.values(RULE_REGISTRY)
-    .map((rule) => {
-      const active = isRuleActive(rule.id);
-      const disabled = !rule.implemented;
-      const badge = disabled ? rule.implementationStatus : active ? "active" : "available";
-      const checkbox = `<input type="checkbox" data-rule-toggle="${rule.id}" ${checkedAttr(active)} ${disabledAttr(disabled)} />`;
-      return `<section class="rule-card ${disabled ? "disabled" : ""}" title="${escapeHtml(ruleHelp(rule.id))}">
-        <div class="rule-card-head">
-          <label>${checkbox}<span>${escapeHtml(rule.label)}</span></label>
-          <span class="rule-badge">${escapeHtml(badge)}</span>
-        </div>
-        <p>${escapeHtml(ruleHelp(rule.id))}</p>
-        ${ruleControlsHtml(rule.id, active, disabled)}
-      </section>`;
-    })
+  const seen = new Set();
+  const groups = RULE_GROUPS.map((group) => {
+    const cards = group.ids
+      .filter((id) => RULE_REGISTRY[id])
+      .map((id) => {
+        seen.add(id);
+        return ruleCardHtml(RULE_REGISTRY[id]);
+      })
+      .join("");
+    return `<section class="rule-group">
+      <h3>${escapeHtml(group.title)}</h3>
+      <div class="rule-group-grid">${cards}</div>
+    </section>`;
+  });
+  const ungrouped = Object.values(RULE_REGISTRY)
+    .filter((rule) => !seen.has(rule.id))
+    .map(ruleCardHtml)
     .join("");
+  el.rulePalette.innerHTML = `${groups.join("")}${ungrouped ? `<section class="rule-group"><h3>Other</h3><div class="rule-group-grid">${ungrouped}</div></section>` : ""}`;
+}
+
+function ruleCardHtml(rule) {
+  const active = isRuleActive(rule.id);
+  const disabled = !rule.implemented;
+  const badge = disabled ? rule.implementationStatus : active ? "active" : "available";
+  const checkbox = `<input type="checkbox" data-rule-toggle="${rule.id}" ${checkedAttr(active)} ${disabledAttr(disabled)} />`;
+  return `<section class="rule-card ${disabled ? "disabled" : ""}" data-rule-card="${escapeHtml(rule.id)}" aria-disabled="${disabled}" title="${escapeHtml(ruleHelp(rule.id))}">
+    <div class="rule-card-head">
+      <label>${checkbox}<span>${escapeHtml(rule.label)}</span></label>
+      <span class="rule-badge">${escapeHtml(badge)}</span>
+    </div>
+    <p>${escapeHtml(ruleHelp(rule.id))}</p>
+    ${ruleControlsHtml(rule.id, active, disabled)}
+  </section>`;
 }
 
 function ruleControlsHtml(id, active, disabled) {
   if (disabled) {
     const reason =
       RULE_REGISTRY[id].implementationStatus === "blocked"
-        ? "Solver rejects this rule because semantics are unverified."
-        : "Solver rejects this rule until implementation edge cases are settled.";
+        ? "Placeholder only. Solver rejects this rule because semantics are unverified."
+        : "Placeholder only. Solver rejects this rule until implementation edge cases are settled.";
     return `<div class="rule-controls"><p>${escapeHtml(reason)}</p></div>`;
   }
   if (id === "precision") return `<div class="rule-controls"><p>Edit with the Precision area field.</p></div>`;
@@ -611,6 +774,40 @@ function ruleControlsHtml(id, active, disabled) {
   return "";
 }
 
+function renderShapeBankList() {
+  const { entries, errors } = shapeBankTextToEntries(el.shapeBankInput.value);
+  if (entries.length === 0) {
+    const errorText = errors.length ? `<p class="shape-errors">${errors.map(escapeHtml).join("<br />")}</p>` : "";
+    el.shapeBankList.innerHTML = `<div class="empty-state">No shapes in the bank yet. Draw one below or paste raw text.</div>${errorText}`;
+    return;
+  }
+  const cards = entries
+    .map(
+      (entry, index) => `<article class="shape-card">
+        <div class="shape-card-preview">${shapePreviewSvg(entry.cells)}</div>
+        <div class="shape-card-body">
+          <strong>${escapeHtml(entry.name || `Shape${index + 1}`)}</strong>
+          <span>${entry.cells.length} cell${entry.cells.length === 1 ? "" : "s"}</span>
+        </div>
+        <button type="button" class="icon-button" data-delete-shape-index="${index}" aria-label="Delete ${escapeHtml(entry.name)}">Delete</button>
+      </article>`
+    )
+    .join("");
+  const errorText = errors.length ? `<p class="shape-errors">${errors.map(escapeHtml).join("<br />")}</p>` : "";
+  el.shapeBankList.innerHTML = `${cards}${errorText}`;
+}
+
+function shapePreviewSvg(cells) {
+  const preview = shapePreviewViewBox(cells);
+  const size = 18;
+  const width = preview.width * size;
+  const height = preview.height * size;
+  const rects = preview.cells
+    .map(([x, y]) => `<rect x="${x * size + 1}" y="${y * size + 1}" width="${size - 2}" height="${size - 2}" rx="3"></rect>`)
+    .join("");
+  return `<svg class="shape-preview" viewBox="0 0 ${width} ${height}" aria-hidden="true">${rects}</svg>`;
+}
+
 function renderShapeMiniGrid() {
   renderMiniGrid(el.shapeMiniGrid, shapeDraftCells);
 }
@@ -633,38 +830,164 @@ function renderMiniGrid(container, selectedCells) {
 
 function renderValidation() {
   const validation = validatePuzzle(puzzle);
-  const messages = [];
+  const groups = {
+    "Board issues": [],
+    "Rule issues": [],
+    "Clue issues": [],
+    "Shape-bank issues": [],
+    "Solver / candidate-source issues": []
+  };
   const validationErrors = validation.errors.filter((error) => {
     return (
       error !== 'Rule "area_number" requires at least one area number clue.' &&
       error !== 'Rule "polyomino" requires at least one polyomino clue.'
     );
   });
-  if (puzzle.activeCells.length === 0) messages.push("Add at least one active cell.");
+  if (puzzle.activeCells.length === 0) groups["Board issues"].push("Add at least one active cell before solving.");
   if (Number(puzzle.rules.area) <= 0 && !hasCandidateSource()) {
-    messages.push("Precision needs a positive area.");
+    groups["Rule issues"].push("Precision needs a positive area.");
   } else if (!hasCandidateSource()) {
-    messages.push("Add Precision area, Shape Bank shapes, Area Number clues, or Polyomino clues so the solver can generate candidates.");
+    groups["Solver / candidate-source issues"].push(
+      "Add Precision area, Shape Bank shapes, Area Number clues, or Polyomino clues so the solver can generate candidates."
+    );
   }
   if (puzzle.rules.shape_bank && !puzzle.shapeBank?.text?.trim() && (puzzle.shapeBank?.entries ?? []).length === 0) {
-    messages.push("Draw or paste at least one shape.");
+    groups["Shape-bank issues"].push("Draw or paste at least one shape.");
   }
   if (puzzle.rules.area_number && !hasRuleClue("area_number")) {
-    messages.push("Place at least one Area Number clue.");
+    groups["Clue issues"].push("Place at least one Area Number clue.");
   }
   if (puzzle.rules.polyomino && !hasRuleClue("polyomino")) {
-    messages.push("Place at least one Polyomino clue.");
+    groups["Clue issues"].push("Place at least one Polyomino clue.");
   }
-  messages.push(...validationErrors);
+  for (const error of validationErrors) {
+    groups[categorizeValidationMessage(error)].push(actionableValidationMessage(error));
+  }
 
+  const messages = Object.entries(groups).filter(([, items]) => items.length > 0);
   if (messages.length === 0) {
     el.validationBox.textContent = "No validation issues.";
     el.validationBox.className = "validation-box good";
     return;
   }
 
-  el.validationBox.textContent = messages.map((message) => `- ${message}`).join("\n");
+  el.validationBox.innerHTML = messages
+    .map(([title, items]) => `<section class="validation-group"><h3>${escapeHtml(title)}</h3><ul>${items.map((message) => `<li>${escapeHtml(message)}</li>`).join("")}</ul></section>`)
+    .join("");
   el.validationBox.className = `validation-box ${validationErrors.length ? "bad" : "warn"}`;
+}
+
+function categorizeValidationMessage(message) {
+  if (/shape bank|shape-bank|shape_bank|shape/i.test(message)) return "Shape-bank issues";
+  if (/clue|relation|cell clue|polyomino|area number/i.test(message)) return "Clue issues";
+  if (/candidate|source|solver/i.test(message)) return "Solver / candidate-source issues";
+  if (/active|cell|width|height|board/i.test(message)) return "Board issues";
+  return "Rule issues";
+}
+
+function actionableValidationMessage(message) {
+  if (/Unknown rule id/i.test(message)) return `${message} Remove it from JSON or add a supported registry entry.`;
+  if (/not implemented/i.test(message)) return `${message} Disable this rule before solving.`;
+  return message;
+}
+
+function renderInspector() {
+  const state = inspectorStateForSelection(puzzle, {
+    selectedClueId,
+    selectedCell,
+    candidateSummary: lastCandidateSummary
+  });
+
+  if (!state) {
+    const info = toolInfo(currentTool);
+    el.inspectorBox.innerHTML = `<div class="empty-state">
+      <strong>${escapeHtml(info.name)}</strong>
+      <p>${escapeHtml(info.description)}</p>
+      <p>${escapeHtml(info.params)}</p>
+    </div>`;
+    return;
+  }
+
+  if (state.type === "cell") {
+    el.inspectorBox.innerHTML = cellInspectorHtml(state);
+    return;
+  }
+  if (state.type === "relation_clue") {
+    el.inspectorBox.innerHTML = relationInspectorHtml(state);
+    return;
+  }
+  if (state.type === "cell_clue") {
+    el.inspectorBox.innerHTML = cellClueInspectorHtml(state.clue, state.label);
+  }
+}
+
+function cellInspectorHtml(state) {
+  const candidateText =
+    state.candidateCount === null ? "Use Show candidates for selected cell to calculate this." : `${state.candidateCount} candidate${state.candidateCount === 1 ? "" : "s"}`;
+  const area = state.areaNumberClue ? cellClueInspectorHtml(state.areaNumberClue, state.label) : `<p class="muted">No Area Number clue on this cell.</p>`;
+  const poly = state.polyominoClue ? cellClueInspectorHtml(state.polyominoClue, state.label) : `<p class="muted">No Polyomino clue on this cell.</p>`;
+  return `<div class="inspector-stack">
+    <section class="inspector-card">
+      <h3>${escapeHtml(state.label)}</h3>
+      <dl class="compact-list">
+        <dt>Cell state</dt><dd>${state.active ? "Active" : "Hole"}</dd>
+        <dt>Candidate count</dt><dd>${escapeHtml(candidateText)}</dd>
+      </dl>
+    </section>
+    <section class="inspector-card">
+      <h3>Area Number</h3>
+      ${area}
+    </section>
+    <section class="inspector-card">
+      <h3>Polyomino</h3>
+      ${poly}
+    </section>
+  </div>`;
+}
+
+function cellClueInspectorHtml(clue, label) {
+  if (clue.ruleId === "area_number") {
+    const value = Number(clue.value ?? clue.params?.value ?? clue.params?.area ?? 1);
+    return `<div class="inspector-stack">
+      <label class="stacked">Value
+        <input type="number" min="1" max="20" value="${value}" data-clue-id="${escapeHtml(clue.id)}" data-area-value />
+      </label>
+      <button type="button" data-delete-clue-id="${escapeHtml(clue.id)}">Remove clue</button>
+    </div>`;
+  }
+  if (clue.ruleId === "polyomino") {
+    const cells = clue.params?.shape ?? [];
+    const rotations = clue.params?.allowRotations !== false;
+    const reflections = clue.params?.allowReflections === true;
+    return `<div class="inspector-stack">
+      <p>${escapeHtml(label)} polyomino clue, ${cells.length} cell${cells.length === 1 ? "" : "s"}.</p>
+      <label class="checkbox-row single"><input type="checkbox" ${checkedAttr(rotations)} data-clue-id="${escapeHtml(clue.id)}" data-poly-option="allowRotations" /> Allow rotations</label>
+      <label class="checkbox-row single"><input type="checkbox" ${checkedAttr(reflections)} data-clue-id="${escapeHtml(clue.id)}" data-poly-option="allowReflections" /> Allow reflections</label>
+      <button type="button" data-delete-clue-id="${escapeHtml(clue.id)}">Remove clue</button>
+    </div>`;
+  }
+  return `<p>${escapeHtml(ruleLabel(clue.ruleId))} clue.</p>
+    <button type="button" data-delete-clue-id="${escapeHtml(clue.id)}">Remove clue</button>`;
+}
+
+function relationInspectorHtml(state) {
+  const differenceInput =
+    state.ruleId === "difference"
+      ? `<label class="stacked">Difference value
+          <input type="number" min="0" max="20" value="${state.differenceValue ?? 0}" data-clue-id="${escapeHtml(state.clue.id)}" data-difference-value />
+        </label>`
+      : "";
+  return `<div class="inspector-stack">
+    <section class="inspector-card">
+      <h3>${escapeHtml(ruleLabel(state.ruleId))}</h3>
+      <dl class="compact-list">
+        <dt>Referenced cells</dt><dd>${escapeHtml(state.labels.join(" and ") || "Unknown")}</dd>
+        <dt>Rule type</dt><dd>${escapeHtml(state.ruleId)}</dd>
+      </dl>
+      ${differenceInput}
+      <button type="button" data-delete-clue-id="${escapeHtml(state.clue.id)}">Delete relation clue</button>
+    </section>
+  </div>`;
 }
 
 function renderBoard() {
@@ -675,7 +998,7 @@ function renderBoard() {
   const cellClues = cellCluesByCell();
 
   let html = "";
-  html += `<rect x="0" y="0" width="${widthPx}" height="${heightPx}" rx="12" fill="#fdf8ef"></rect>`;
+  html += `<rect x="0" y="0" width="${widthPx}" height="${heightPx}" rx="12" fill="var(--board-bg)"></rect>`;
   html += traceImageSvg(widthPx, heightPx);
 
   for (let y = 0; y < puzzle.height; y += 1) {
@@ -830,6 +1153,11 @@ function removeClueById(clueId) {
   return normalizePuzzle({ ...puzzle, clues });
 }
 
+function updateClueById(clueId, updater) {
+  const clues = (puzzle.clues ?? []).map((clue) => (clue.id === clueId ? updater(clue) : clue));
+  return normalizePuzzle({ ...puzzle, clues });
+}
+
 function cellCluesByCell() {
   const byCell = new Map();
   for (const clue of puzzle.clues ?? []) {
@@ -895,25 +1223,6 @@ function toggleDraftCell(targetSet, key) {
 function shapeCellsFromDraft(targetSet) {
   const cells = [...targetSet].map((key) => key.split(",").map(Number));
   return cells.length ? normalizeShape(cells) : [];
-}
-
-function shapeBankLineFromDraft() {
-  const cells = shapeCellsFromDraft(shapeDraftCells);
-  if (cells.length === 0) return "";
-  const name = sanitizeShapeName(el.shapeNameInput.value) || `Shape${shapeBankLineCount() + 1}`;
-  return `${name}: ${cells.map(([x, y]) => `${x},${y}`).join(" ")}`;
-}
-
-function sanitizeShapeName(value) {
-  return String(value ?? "")
-    .trim()
-    .replace(/[^A-Za-z0-9_-]/g, "_")
-    .replace(/^_+|_+$/g, "");
-}
-
-function appendLine(text, line) {
-  const current = String(text ?? "").trimEnd();
-  return current ? `${current}\n${line}` : line;
 }
 
 function shapeBankLineCount() {
