@@ -1,4 +1,5 @@
 import { activeAdjacencyEdges, cellLabel, edgeKey, hasBit, orthogonalNeighbors } from "./geometry.js";
+import { generateCandidateDiagnostics } from "./candidates.js";
 import { clonePuzzle, normalizePuzzle, setEdgeState } from "./puzzle.js";
 import { solvePuzzle } from "./solver.js";
 import { candidateShapeForComparison } from "./shape-comparison.js";
@@ -9,7 +10,12 @@ const DEFAULT_COMPLETION_LIMIT = 2;
 
 export function findNextLogicalStep(puzzle, options = {}) {
   const maxNodes = options.maxNodes ?? DEFAULT_MAX_NODES;
-  const base = solvePuzzle(puzzle, { limit: DEFAULT_COMPLETION_LIMIT, maxNodes });
+  const completionLimit = options.completionLimit ?? DEFAULT_COMPLETION_LIMIT;
+  const normalized = normalizePuzzle(puzzle);
+  const base = solvePuzzle(normalized, { limit: completionLimit, maxNodes });
+  const directViolation = findDirectCandidateViolationStep(normalized, options);
+  if (directViolation) return { status: "step", step: directViolation, base };
+
   if (base.status === "no_solution") {
     return {
       status: "no_solution",
@@ -25,32 +31,30 @@ export function findNextLogicalStep(puzzle, options = {}) {
     };
   }
 
-  const singleCandidate = findCellWithOnlyOneCandidate(puzzle, base);
+  const singleCandidate = findCellWithOnlyOneCandidate(normalized, base);
   if (singleCandidate) {
     return {
       status: "step",
-      step: forcedRegionStep(puzzle, singleCandidate.cell, singleCandidate.candidate, "all_completions_agree", base.candidatePlan?.ruleId),
+      step: forcedRegionStep(normalized, singleCandidate.cell, singleCandidate.candidate, "all_completions_agree", base.candidatePlan?.ruleId),
       base
     };
   }
 
-  const relationPair = findForcedRelationPair(puzzle, base);
+  const relationPair = findForcedRelationPair(normalized, base);
   if (relationPair) {
-    return { status: "step", step: relationPairStep(puzzle, relationPair), base };
+    return { status: "step", step: relationPairStep(normalized, relationPair), base };
   }
 
-  if (base.status === "unique_solution") {
-    const regionStep = findForcedRegionFromUniqueSolution(puzzle, base);
-    if (regionStep) return { status: "step", step: regionStep, base };
+  const agreementEdge = findAgreementEdgeStep(normalized, base);
+  if (agreementEdge) return { status: "step", step: agreementEdge, base };
 
-    const edgeStep = findEdgeFromUniqueSolution(puzzle, base);
-    if (edgeStep) return { status: "step", step: edgeStep, base };
-  }
+  const agreementRegion = findAgreementRegionStep(normalized, base);
+  if (agreementRegion) return { status: "step", step: agreementRegion, base };
 
-  const contradictionEdge = findContradictionEdgeStep(puzzle, maxNodes);
+  const contradictionEdge = findContradictionEdgeStep(normalized, maxNodes);
   if (contradictionEdge) return { status: "step", step: contradictionEdge, base };
 
-  const eliminated = findCandidateEliminationStep(puzzle, base, maxNodes, options.maxEliminationChecks ?? 40);
+  const eliminated = findCandidateEliminationStep(normalized, base, maxNodes, options.maxEliminationChecks ?? 40);
   if (eliminated) return { status: "step", step: eliminated, base };
 
   if (base.status === "unique_solution") {
@@ -66,6 +70,15 @@ export function findNextLogicalStep(puzzle, options = {}) {
     message: "No implemented logical step is forced from the current puzzle state. The puzzle may need a higher-level deduction or may have multiple solutions.",
     base
   };
+}
+
+export function explainCandidateViolations(rawPuzzle, options = {}) {
+  const puzzle = normalizePuzzle(rawPuzzle);
+  const diagnostics = generateCandidateDiagnostics(puzzle, options);
+  const acceptedMasks = new Set(diagnostics.accepted.map((candidate) => candidate.mask.toString()));
+  return diagnostics.rejected
+    .filter(({ candidate }) => !acceptedMasks.has(candidate.mask.toString()))
+    .map(({ candidate, rejection }) => directCandidateViolationStep(puzzle, candidate, rejection, diagnostics.plan.ruleId));
 }
 
 export function explainAllLogicalSteps(rawPuzzle, options = {}) {
@@ -214,37 +227,42 @@ function findForcedRelationPair(puzzle, base) {
   return null;
 }
 
-function findForcedRegionFromUniqueSolution(puzzle, base) {
-  const solution = base.solutions[0];
-  if (!solution) return null;
-  for (const region of solution.regions) {
-    if (!regionAlreadyForced(puzzle, region.cells)) {
-      return forcedRegionStep(puzzle, region.cells[0], {
-        id: region.id,
-        cells: region.cells,
-        area: region.area,
-        mask: region.cells.reduce((mask, cell) => mask | (1n << BigInt(cell)), 0n),
-        source: region.source,
-        sourceName: region.sourceName
-      }, "all_completions_agree");
-    }
+function findAgreementEdgeStep(puzzle, base) {
+  if (base.truncated || !base.solutions?.length) return null;
+  for (const [a, b] of activeAdjacencyEdges(puzzle)) {
+    const current = puzzle.edges[edgeKey(a, b)] ?? { state: null, relation: null };
+    if (current.state || current.relation) continue;
+    const state = edgeStateInSolution(base.solutions[0], a, b);
+    if (!base.solutions.every((solution) => edgeStateInSolution(solution, a, b) === state)) continue;
+    return forcedEdgeStep(puzzle, a, b, state, {
+      result: "all_completions_agree",
+      reason: `${base.solutions.length} enumerated completion${base.solutions.length === 1 ? "" : "s"} all ${state} this border.`
+    });
   }
   return null;
 }
 
-function findEdgeFromUniqueSolution(puzzle, base) {
-  const solution = base.solutions[0];
-  if (!solution) return null;
-  for (const [a, b] of activeAdjacencyEdges(puzzle)) {
-    const current = puzzle.edges[edgeKey(a, b)] ?? { state: null, relation: null };
-    if (current.state || current.relation) continue;
-    const sameRegion = solution.regionByCell[a] === solution.regionByCell[b];
-    return forcedEdgeStep(puzzle, a, b, sameRegion ? "join" : "cut", {
-      result: "all_completions_agree",
-      reason: "The unique completion fixes this border state."
-    });
+function findAgreementRegionStep(puzzle, base) {
+  if (base.truncated || !base.solutions?.length) return null;
+  for (const region of base.solutions[0].regions) {
+    const mask = regionMaskString(region.cells);
+    if (!base.solutions.every((solution) => solution.regions.some((other) => regionMaskString(other.cells) === mask))) continue;
+    if (regionAlreadyForced(puzzle, region.cells)) continue;
+    return forcedRegionStep(puzzle, region.cells[0], {
+      id: region.id,
+      cells: region.cells,
+      area: region.area,
+      mask: region.cells.reduce((regionMask, cell) => regionMask | (1n << BigInt(cell)), 0n),
+      source: region.source,
+      sourceName: region.sourceName
+    }, "all_completions_agree");
   }
   return null;
+}
+
+function findDirectCandidateViolationStep(puzzle, options) {
+  const violations = explainCandidateViolations(puzzle, options);
+  return violations[0] ?? null;
 }
 
 function findContradictionEdgeStep(puzzle, maxNodes) {
@@ -371,6 +389,25 @@ function candidateEliminatedStep(puzzle, candidate, fallbackRuleId) {
   });
 }
 
+function directCandidateViolationStep(puzzle, candidate, rejection, fallbackRuleId) {
+  const region = summarizeCandidate(candidate, puzzle, rejection.ruleId ?? fallbackRuleId);
+  return structuredStep({
+    type: "candidate_eliminated",
+    cells: candidate.cells,
+    region,
+    ruleId: rejection.ruleId ?? fallbackRuleId,
+    title: `Eliminate candidate ${region.labels.join(", ")}`,
+    reason: `${region.labels.join(", ")} is not a valid region candidate: ${rejection.reason}`,
+    proof: {
+      assumption: { region: candidate.cells, ruleId: rejection.ruleId },
+      result: "no_solution"
+    },
+    afterState: {
+      metadata: { excludedCandidateMasks: [region.mask] }
+    }
+  });
+}
+
 function structuredStep(partial) {
   return {
     type: partial.type,
@@ -471,6 +508,14 @@ function relationCellsFromClue(clue) {
     return cells.every(Number.isInteger) ? cells : null;
   }
   return null;
+}
+
+function edgeStateInSolution(solution, a, b) {
+  return solution.regionByCell[a] === solution.regionByCell[b] ? "join" : "cut";
+}
+
+function regionMaskString(cells) {
+  return [...cells].sort((a, b) => a - b).join(",");
 }
 
 function candidateAppearsInKnownSolution(candidate, solutions) {

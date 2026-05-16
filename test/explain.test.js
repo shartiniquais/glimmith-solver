@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createPuzzle } from "../src/core/puzzle.js";
+import { hasBit, maskFromIndexes } from "../src/core/geometry.js";
+import { createPuzzle, normalizePuzzle } from "../src/core/puzzle.js";
+import { solvePuzzle } from "../src/core/solver.js";
 import {
   applyLogicalStep,
   describeCandidatesForCell,
+  explainCandidateViolations,
   explainAllLogicalSteps,
   findNextLogicalStep,
   isStepApplyable
@@ -76,4 +79,105 @@ test("implemented rules have explanation snippets", () => {
     assert.ok(snippets.clueSatisfied, `${ruleId} needs a satisfied clue explanation`);
     assert.ok(snippets.clueUnsatisfied, `${ruleId} needs an unsatisfied clue explanation`);
   }
+});
+
+test("direct Rose Window candidate violation can be explained", () => {
+  const puzzle = createPuzzle(3, 1);
+  puzzle.rules.area = 2;
+  puzzle.rules.roseLabels = "AB";
+  puzzle.symbols = { 0: "A", 1: "A", 2: "B" };
+
+  const [step] = explainCandidateViolations(puzzle);
+
+  assert.equal(step.type, "candidate_eliminated");
+  assert.equal(step.ruleId, "rose_window");
+  assert.match(step.reason, /Rose Window|symbol counts/);
+});
+
+test("direct Area Number candidate violation can be explained", () => {
+  const puzzle = createPuzzle(3, 1);
+  puzzle.rules.area = 2;
+  puzzle.clues = [{ id: "one", type: "cell", ruleId: "area_number", value: 1, location: { type: "cell", cell: 0 } }];
+
+  const [step] = explainCandidateViolations(puzzle);
+
+  assert.equal(step.type, "candidate_eliminated");
+  assert.equal(step.ruleId, "area_number");
+  assert.match(step.reason, /Area Number|area/);
+});
+
+test("direct Polyomino candidate violation can be explained", () => {
+  const puzzle = createPuzzle(2, 2);
+  puzzle.rules.area = 0;
+  puzzle.rules.polyomino = { allowRotations: false, allowReflections: false };
+  puzzle.clues = [
+    {
+      id: "vertical",
+      type: "cell",
+      ruleId: "polyomino",
+      location: { type: "cell", cell: 0 },
+      params: { shape: [[0, 0], [0, 1]], allowRotations: false, allowReflections: false }
+    },
+    {
+      id: "horizontal",
+      type: "cell",
+      ruleId: "polyomino",
+      location: { type: "cell", cell: 1 },
+      params: { shape: [[0, 0], [1, 0]], allowRotations: false, allowReflections: false }
+    }
+  ];
+
+  const [step] = explainCandidateViolations(puzzle);
+
+  assert.equal(step.type, "candidate_eliminated");
+  assert.equal(step.ruleId, "polyomino");
+  assert.match(step.reason, /Polyomino|shape/);
+});
+
+test("direct candidate violation is preferred before contradiction elimination", () => {
+  const puzzle = createPuzzle(3, 1);
+  puzzle.rules.area = 2;
+  puzzle.rules.roseLabels = "AB";
+  puzzle.symbols = { 0: "A", 1: "A", 2: "B" };
+
+  const result = findNextLogicalStep(puzzle);
+
+  assert.equal(result.status, "step");
+  assert.equal(result.step.type, "candidate_eliminated");
+  assert.equal(result.step.ruleId, "rose_window");
+});
+
+test("multiple completions sharing one border produce all-completions-agree step", () => {
+  const puzzle = normalizePuzzle({
+    width: 3,
+    height: 3,
+    activeCells: [0, 1, 2, 3, 4, 5],
+    rules: { area: 3 }
+  });
+
+  const result = findNextLogicalStep(puzzle, { completionLimit: 20 });
+
+  assert.equal(result.status, "step");
+  assert.equal(result.base.solutions.length, 3);
+  assert.equal(result.step.type, "forced_cut");
+  assert.deepEqual(result.step.edge, [1, 4]);
+  assert.equal(result.step.proof.result, "all_completions_agree");
+});
+
+test("candidate elimination metadata removes the candidate from future candidate lists", () => {
+  const puzzle = createPuzzle(2, 2);
+  puzzle.rules.area = 2;
+  const mask = maskFromIndexes([0, 1]).toString();
+  const before = solvePuzzle(puzzle);
+  assert.ok(before.candidates.some((candidate) => candidate.mask.toString() === mask));
+
+  const next = applyLogicalStep(puzzle, {
+    type: "candidate_eliminated",
+    region: { mask }
+  });
+  const after = solvePuzzle(next);
+
+  assert.deepEqual(next.metadata.excludedCandidateMasks, [mask]);
+  assert.ok(after.candidates.every((candidate) => candidate.mask.toString() !== mask));
+  assert.ok(after.candidates.every((candidate) => !hasBit(candidate.mask, 0) || !hasBit(candidate.mask, 1)));
 });

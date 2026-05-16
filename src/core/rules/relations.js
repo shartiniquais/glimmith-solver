@@ -46,6 +46,10 @@ export const differenceRule = {
     return candidateKeepsRelationRefsSeparate(candidate, context, "difference");
   },
 
+  explainElimination(candidate, context) {
+    return explainRelationCandidateElimination(candidate, context, "difference", "Difference");
+  },
+
   addConstraints(model, context) {
     for (const clue of relationClues(context, "difference")) {
       const refs = relationCells(clue);
@@ -80,6 +84,10 @@ function makeShapeRelationRule({ id, label, relation, isValid }) {
       return candidateKeepsRelationRefsSeparate(candidate, context, id);
     },
 
+    explainElimination(candidate, context) {
+      return explainRelationCandidateElimination(candidate, context, id, label);
+    },
+
     addConstraints(model, context) {
       for (const clue of relationClues(context, id)) {
         const refs = relationCells(clue);
@@ -88,6 +96,17 @@ function makeShapeRelationRule({ id, label, relation, isValid }) {
       }
     }
   };
+}
+
+function explainRelationCandidateElimination(candidate, context, ruleId, label) {
+  for (const clue of relationClues(context, ruleId)) {
+    const refs = relationCells(clue);
+    if (!refs) continue;
+    if (refs.every((cell) => hasBit(candidate.mask, cell))) {
+      return `${label} clue "${clue.id}" references two regions, so one candidate region cannot contain both referenced cells.`;
+    }
+  }
+  return null;
 }
 
 function candidateKeepsRelationRefsSeparate(candidate, context, ruleId) {

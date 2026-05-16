@@ -86,6 +86,21 @@ export function applyCandidateFilters(candidate, context, extraRules = []) {
   return true;
 }
 
+export function explainCandidateRejection(candidate, context, extraRules = []) {
+  const rules = [...extraRules, ...activeRuleEntries(context).map(([rule]) => rule)];
+  for (const rule of rules) {
+    if (!rule.candidateFilter || rule.candidateFilter(candidate, context)) continue;
+    return {
+      ruleId: rule.id,
+      label: rule.label,
+      reason:
+        rule.explainElimination?.(candidate, context) ??
+        `Candidate was rejected by ${rule.label ?? rule.id}.`
+    };
+  }
+  return null;
+}
+
 export function addRuleConstraints(model, context) {
   for (const [rule] of activeRuleEntries(context)) {
     if (rule.addConstraints) rule.addConstraints(model, context);

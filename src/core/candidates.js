@@ -13,7 +13,7 @@ import { candidateShapeForComparison } from "./shape-comparison.js";
 import { areaNumberCandidateAreas } from "./rules/area-number.js";
 import { edgeConstraintsRule } from "./rules/edge-constraints.js";
 import { polyominoCandidateShapes } from "./rules/polyomino.js";
-import { applyCandidateFilters, createRuleContext } from "./rules/registry.js";
+import { applyCandidateFilters, createRuleContext, explainCandidateRejection } from "./rules/registry.js";
 
 const DEFAULT_MAX_CANDIDATES = 80000;
 
@@ -22,19 +22,8 @@ export function generateCandidates(puzzle, options = {}) {
   const context = options.context ?? createRuleContext(puzzle, options);
   const plan = buildCandidateGenerationPlan(puzzle, context);
   const errors = [...plan.errors];
-  const raw = [];
-
-  if (plan.kind === "shape_bank") {
-    raw.push(...generateShapePlacementCandidates(puzzle, plan.shapes, maxCandidates, "shapeBank"));
-  } else if (plan.kind === "polyomino_clues") {
-    raw.push(...generateShapePlacementCandidates(puzzle, plan.shapes, maxCandidates, "polyomino"));
-  } else if (plan.kind === "fixed_area") {
-    raw.push(...generateConnectedCandidates(puzzle, plan.area, maxCandidates));
-  } else if (plan.kind === "area_number_clues") {
-    raw.push(...generateConnectedCandidatesForAreas(puzzle, plan.areas, maxCandidates));
-  } else {
-    errors.push("Set a Precision area or provide a shape bank before solving.");
-  }
+  const raw = generateRawCandidatesForPlan(puzzle, plan, maxCandidates);
+  if (plan.kind === "missing_source") errors.push("Set a Precision area or provide a shape bank before solving.");
 
   const excludedMasks = new Set(puzzle.metadata?.excludedCandidateMasks ?? []);
   const filtered = [];
@@ -56,6 +45,44 @@ export function generateCandidates(puzzle, options = {}) {
   }
 
   return { candidates: filtered, errors, plan };
+}
+
+export function generateCandidateDiagnostics(puzzle, options = {}) {
+  const maxCandidates = options.maxCandidates ?? DEFAULT_MAX_CANDIDATES;
+  const context = options.context ?? createRuleContext(puzzle, options);
+  const plan = buildCandidateGenerationPlan(puzzle, context);
+  const raw = generateRawCandidatesForPlan(puzzle, plan, maxCandidates);
+  const excludedMasks = new Set(puzzle.metadata?.excludedCandidateMasks ?? []);
+  const accepted = [];
+  const rejected = [];
+  const acceptedMasks = new Set();
+  const rejectedKeys = new Set();
+
+  for (const candidate of raw) {
+    const mask = candidate.mask.toString();
+    if (excludedMasks.has(mask)) continue;
+    const rejection = explainCandidateRejection(candidate, context, [edgeConstraintsRule]);
+    if (rejection) {
+      const key = `${mask}:${rejection.ruleId}`;
+      if (!rejectedKeys.has(key)) {
+        rejectedKeys.add(key);
+        rejected.push({ candidate, rejection });
+      }
+      continue;
+    }
+    if (acceptedMasks.has(mask)) continue;
+    acceptedMasks.add(mask);
+    candidate.id = accepted.length;
+    accepted.push(candidate);
+  }
+
+  return {
+    plan,
+    raw,
+    accepted,
+    rejected,
+    errors: [...plan.errors, ...(raw.length >= maxCandidates ? [`Candidate generation stopped at ${maxCandidates} regions.`] : [])]
+  };
 }
 
 export function buildCandidateGenerationPlan(puzzle, context = createRuleContext(puzzle)) {
@@ -125,6 +152,22 @@ function makeCandidate(indexes, width, height, source, sourceName = "", matchOpt
     width,
     height
   };
+}
+
+function generateRawCandidatesForPlan(puzzle, plan, maxCandidates) {
+  if (plan.kind === "shape_bank") {
+    return generateShapePlacementCandidates(puzzle, plan.shapes, maxCandidates, "shapeBank");
+  }
+  if (plan.kind === "polyomino_clues") {
+    return generateShapePlacementCandidates(puzzle, plan.shapes, maxCandidates, "polyomino");
+  }
+  if (plan.kind === "fixed_area") {
+    return generateConnectedCandidates(puzzle, plan.area, maxCandidates);
+  }
+  if (plan.kind === "area_number_clues") {
+    return generateConnectedCandidatesForAreas(puzzle, plan.areas, maxCandidates);
+  }
+  return [];
 }
 
 function generateShapePlacementCandidates(puzzle, shapes, maxCandidates, source = "shapeBank") {
