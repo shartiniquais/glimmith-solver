@@ -538,7 +538,7 @@
         "No groups/subsets.",
         "Rotations/reflections count as the same shape."
       ],
-      "implemented": false,
+      "implemented": true,
       "confirmation": {
         "basis": "user_confirmed_in_game_observation",
         "date": "2026-05-16",
@@ -589,7 +589,7 @@
         "All regions in the puzzle must have distinct shapes.",
         "Rotations/reflections count as the same shape."
       ],
-      "implemented": false,
+      "implemented": true,
       "confirmation": {
         "basis": "user_confirmed_in_game_observation",
         "date": "2026-05-16",
@@ -638,7 +638,7 @@
         "Supports min-only, max-only, or min+max.",
         "No complex disjoint ranges."
       ],
-      "implemented": false,
+      "implemented": true,
       "confirmation": {
         "basis": "user_confirmed_in_game_observation",
         "date": "2026-05-16",
@@ -696,7 +696,7 @@
         "Rose Windows can count only when the Rose rule has a single symbol type.",
         "Global rule cards do not count."
       ],
-      "implemented": false,
+      "implemented": true,
       "confirmation": {
         "basis": "user_confirmed_in_game_observation",
         "date": "2026-05-16",
@@ -740,7 +740,7 @@
         "Edge-adjacent regions must have different areas.",
         "Corner-touching does not count."
       ],
-      "implemented": false,
+      "implemented": true,
       "confirmation": {
         "basis": "user_confirmed_in_game_observation",
         "date": "2026-05-16",
@@ -788,7 +788,7 @@
         "A single cell counts as boxy.",
         "No holes."
       ],
-      "implemented": false,
+      "implemented": true,
       "confirmation": {
         "basis": "user_confirmed_in_game_observation",
         "date": "2026-05-16",
@@ -835,7 +835,7 @@
         "Filled rectangles, bars, and single cells are forbidden.",
         "Can coexist with Shape Bank."
       ],
-      "implemented": false,
+      "implemented": true,
       "confirmation": {
         "basis": "user_confirmed_in_game_observation",
         "date": "2026-05-16",
@@ -986,7 +986,7 @@
         "Narrow/small side points to the smaller region.",
         "Equality is invalid."
       ],
-      "implemented": false,
+      "implemented": true,
       "confirmation": {
         "basis": "user_confirmed_in_game_observation",
         "date": "2026-05-16",

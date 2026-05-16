@@ -1,0 +1,54 @@
+{
+  "fixtures": [
+    {
+      "name": "match-domino-line-unique",
+      "rulesCovered": ["match"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 2,
+      "expectedForcedSteps": ["forced_region"],
+      "puzzle": {
+        "width": 4,
+        "height": 1,
+        "rules": { "area": 2, "match": {} }
+      }
+    },
+    {
+      "name": "match-mixed-triominoes-impossible",
+      "rulesCovered": ["match"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 3,
+        "height": 3,
+        "activeCells": [0, 1, 2, 3, 4, 6],
+        "edgeConstraints": {
+          "0-1": { "state": "cut" },
+          "0-3": { "state": "join" },
+          "1-2": { "state": "join" },
+          "1-4": { "state": "join" },
+          "3-4": { "state": "cut" },
+          "3-6": { "state": "join" }
+        },
+        "rules": { "area": 3, "match": {} }
+      }
+    },
+    {
+      "name": "match-invalid-active-cells",
+      "rulesCovered": ["match"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["appears more than once"],
+      "puzzle": {
+        "width": 2,
+        "height": 1,
+        "activeCells": [0, 0],
+        "rules": { "area": 1, "match": {} }
+      }
+    }
+  ]
+}

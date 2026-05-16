@@ -43,6 +43,46 @@ export const RULE_EXPLANATION_SNIPPETS = Object.freeze({
     pairIncompatible: "Mingle Shape forbids orthogonally adjacent regions with the same shape.",
     clueSatisfied: "Adjacent regions do not repeat the same shape.",
     clueUnsatisfied: "Two adjacent regions repeat the same shape."
+  },
+  match: {
+    pairIncompatible: "Match requires every selected region to have the same shape.",
+    clueSatisfied: "The selected regions all share one shape.",
+    clueUnsatisfied: "At least one selected region has a different shape."
+  },
+  mismatch: {
+    pairIncompatible: "Mismatch requires every selected region to have a distinct shape.",
+    clueSatisfied: "The selected regions have distinct shapes.",
+    clueUnsatisfied: "At least two selected regions share the same shape."
+  },
+  range: {
+    candidateViolation: "The candidate region area is outside the Range bounds.",
+    clueSatisfied: "The region area is inside the inclusive Range bounds.",
+    clueUnsatisfied: "The region area is outside the inclusive Range bounds."
+  },
+  solitude: {
+    candidateViolation: "The candidate region does not contain exactly one counted clue or symbol.",
+    clueSatisfied: "The region contains exactly one counted clue or symbol.",
+    clueUnsatisfied: "The region contains zero or multiple counted clues/symbols."
+  },
+  size_separation: {
+    pairIncompatible: "Size Separation forbids orthogonally adjacent regions with equal area.",
+    clueSatisfied: "Adjacent regions have different areas.",
+    clueUnsatisfied: "Two adjacent regions have the same area."
+  },
+  boxy: {
+    candidateViolation: "The candidate region does not exactly fill its bounding rectangle.",
+    clueSatisfied: "The region is a filled rectangle.",
+    clueUnsatisfied: "The region is not a filled rectangle."
+  },
+  non_boxy: {
+    candidateViolation: "The candidate region is a filled rectangle, bar, or single cell.",
+    clueSatisfied: "The region is not boxy.",
+    clueUnsatisfied: "The region is boxy."
+  },
+  inequality: {
+    pairIncompatible: "Inequality requires the referenced region areas to satisfy the strict direction.",
+    clueSatisfied: "The referenced region areas satisfy the strict inequality.",
+    clueUnsatisfied: "The referenced region areas do not satisfy the strict inequality."
   }
 });
 

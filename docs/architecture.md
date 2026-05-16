@@ -73,6 +73,14 @@ Currently implemented rule modules:
 - `area_number`: cell clue requiring the containing region to have the clue's area.
 - `polyomino`: cell clue requiring the containing region to match the clue shape.
 - `mingle_shape`: pairwise constraint rejecting orthogonally adjacent same-shape regions.
+- `match`: global same-shape constraint across all selected regions.
+- `mismatch`: global distinct-shape constraint across all selected regions.
+- `range`: inclusive min/max area candidate filter and candidate source when no stronger source exists.
+- `solitude`: candidate filter requiring exactly one counted cell clue or eligible Rose symbol per region.
+- `size_separation`: pairwise constraint rejecting equal-area edge-adjacent regions.
+- `boxy`: candidate filter requiring each region to fill its bounding rectangle.
+- `non_boxy`: candidate filter rejecting filled rectangles, bars, and single-cell regions.
+- `inequality`: two-region strict area inequality relation constraint.
 
 Manual `cut`/`join` edge constraints are handled by `edgeConstraintsRule`. They are editor givens, not Glimmith rule cards.
 
@@ -85,7 +93,8 @@ Manual `cut`/`join` edge constraints are handled by `edgeConstraintsRule`. They 
 3. Build a rule context from active registered rules.
 4. Generate candidate regions:
    - reusable shape-bank placements when a shape bank is present,
-   - otherwise connected regions of the Precision area.
+   - otherwise connected regions of the Precision area,
+   - otherwise Polyomino clue shapes, Area Number clue areas, or Range area bounds when available.
 5. Apply candidate filters from manual edge constraints and active rule modules.
 6. Build exact-cover cell coverage buckets.
 7. Let rule modules add pairwise/global incompatibilities through a constraint model.
@@ -94,7 +103,7 @@ Manual `cut`/`join` edge constraints are handled by `edgeConstraintsRule`. They 
 
 Candidate generation lives in `src/core/candidates.js`. Pairwise/global incompatibility storage lives in `src/core/constraints.js`.
 
-`buildCandidateGenerationPlan(puzzle, context)` is the candidate-source extension point. Today it chooses reusable Shape Bank placements, fixed-area Precision regions, Area Number clue areas, or Polyomino clue shapes. Future rules should extend that source plan or add local candidate filters there, without adding rule-specific logic to the exact-cover search.
+`buildCandidateGenerationPlan(puzzle, context)` is the candidate-source extension point. Today it chooses reusable Shape Bank placements, fixed-area Precision regions, Polyomino clue shapes, Area Number clue areas, or Range area bounds. Future rules should extend that source plan or add local candidate filters there, without adding rule-specific logic to the exact-cover search.
 
 ## Validation
 
@@ -108,7 +117,7 @@ Candidate generation lives in `src/core/candidates.js`. Pairwise/global incompat
 - impossible legacy or v2 board masks,
 - ready-but-not-implemented rule IDs.
 
-Ready-but-not-implemented rules from the inventory, such as Match, Range, Palisade, Compass, and Watchtower, should not affect solving until their modules are implemented. If they appear in puzzle data, solving returns `no_solution` with a known-ready/not-implemented message. UI placeholders are acceptable only if they do not imply solver support.
+Ready-but-not-implemented rules from the inventory, such as Palisade, Bricky, Loopy, Compass, and Watchtower, should not affect solving until their modules are implemented. If they appear in puzzle data, solving returns `no_solution` with a known-ready/not-implemented message. UI placeholders are acceptable only if they do not imply solver support.
 
 ## Adding A Rule
 

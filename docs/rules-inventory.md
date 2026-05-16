@@ -10,7 +10,7 @@ Implementation status means:
 - `experimental`: Mechanics are likely, but unresolved edge cases remain.
 - `blocked`: Exact semantics are not verified enough for faithful solving.
 
-Current status summary: 22 ready, 0 experimental, 0 blocked. 9 rules are implemented in the solver; 13 are ready-but-not-implemented and should validate as known but unsupported until solver work lands.
+Current status summary: 22 ready, 0 experimental, 0 blocked. 17 rules are implemented in the solver; 5 are ready-but-not-implemented and should validate as known but unsupported until solver work lands.
 
 ## Rule Table
 
@@ -25,16 +25,16 @@ Current status summary: 22 ready, 0 experimental, 0 blocked. 9 rules are impleme
 | `mingle_shape` | Mingle Shape | ready | Yes | Global rule: edge-adjacent regions must not have the same shape. Corner-touching does not count. Rotations and reflections count as the same shape. | Global Rule, Two Adjacent Regions, All Regions, Shapes | Global Rule Toggle | Pairwise Candidate Incompatibility | Rotations And Reflections Count Same | Partial | high |
 | `area_number` | Area Number | ready | Yes | Cell clue: a region containing an Area Number clue must have that area. Multiple Area Number clues in one region must agree. Values are positive integers only. | Cell Clue, One Region, Numbers | Positive Integer Number Clue Cells | Candidate Filter | Not Relevant | Yes | high |
 | `palisade` | Palisade | ready | No | Cell clue: describes which sides around the clue cell are borders. Icon rotation does not matter. Types are empty, one_sided, corner, opposite, three_sided, and full. | Cell Clue, Edges Or Walls, Local Border Pattern | Palisade Clue Type | Candidate Filter, Local Border Pattern Constraint | Icon Rotation Does Not Matter | Partial | high |
-| `match` | Match | ready | No | Global rule: all regions in the puzzle must have the same shape. There are no groups/subsets. Rotations and reflections count as the same shape. | Global Rule, All Regions, Shapes | Global Rule Toggle | Global All Same Shape Constraint | Rotations And Reflections Count Same | No | high |
-| `mismatch` | Mismatch | ready | No | Global rule: all regions in the puzzle must have distinct shapes. Rotations and reflections count as the same shape. | Global Rule, All Regions, Shapes | Global Rule Toggle | Global All Different Shape Constraint | Rotations And Reflections Count Same | No | high |
-| `range` | Range | ready | No | Global rule: every region area must be within an inclusive range. It supports min-only, max-only, or min+max; complex disjoint ranges are not part of the mechanic. | Global Rule, All Regions, Numbers | Optional Minimum Area, Optional Maximum Area | Candidate Filter | Not Relevant | Yes | high |
-| `solitude` | Solitude | ready | No | Global rule: every region must contain exactly one counted cell symbol or clue. Counted things are cell-based clues/symbols; Rose Windows count only when the Rose rule has a single symbol type. Global rule cards do not count. | Global Rule, Symbols Inside Regions, Cell Clues | Counted Cell Clue Or Symbol Set | Candidate Filter, Exactly One Counted Cell Constraint | Not Relevant | Yes | high |
-| `size_separation` | Size Separation | ready | No | Global rule: edge-adjacent regions must have different areas. Corner-touching does not count. | Global Rule, Two Adjacent Regions, Numbers | Global Rule Toggle | Pairwise Candidate Incompatibility | Not Relevant | Partial | high |
-| `boxy` | Boxy | ready | No | Global rule: every region must be a filled rectangle. 1xN bars and single cells count as boxy; holes are not allowed. | Global Rule, One Region, Shapes | Global Rule Toggle | Candidate Filter | Not Relevant Beyond Rectangle Detection | Yes | high |
-| `non_boxy` | Non-Boxy | ready | No | Global rule: opposite of Boxy. Filled rectangles, bars, and single cells are forbidden. It can coexist with Shape Bank. | Global Rule, One Region, Shapes | Global Rule Toggle | Candidate Filter | Not Relevant Beyond Rectangle Detection | Yes | high |
+| `match` | Match | ready | Yes | Global rule: all regions in the puzzle must have the same shape. There are no groups/subsets. Rotations and reflections count as the same shape. | Global Rule, All Regions, Shapes | Global Rule Toggle | Global All Same Shape Constraint | Rotations And Reflections Count Same | No | high |
+| `mismatch` | Mismatch | ready | Yes | Global rule: all regions in the puzzle must have distinct shapes. Rotations and reflections count as the same shape. | Global Rule, All Regions, Shapes | Global Rule Toggle | Global All Different Shape Constraint | Rotations And Reflections Count Same | No | high |
+| `range` | Range | ready | Yes | Global rule: every region area must be within an inclusive range. It supports min-only, max-only, or min+max; complex disjoint ranges are not part of the mechanic. | Global Rule, All Regions, Numbers | Optional Minimum Area, Optional Maximum Area | Candidate Filter | Not Relevant | Yes | high |
+| `solitude` | Solitude | ready | Yes | Global rule: every region must contain exactly one counted cell symbol or clue. Counted things are cell-based clues/symbols; Rose Windows count only when the Rose rule has a single symbol type. Global rule cards do not count. | Global Rule, Symbols Inside Regions, Cell Clues | Counted Cell Clue Or Symbol Set | Candidate Filter, Exactly One Counted Cell Constraint | Not Relevant | Yes | high |
+| `size_separation` | Size Separation | ready | Yes | Global rule: edge-adjacent regions must have different areas. Corner-touching does not count. | Global Rule, Two Adjacent Regions, Numbers | Global Rule Toggle | Pairwise Candidate Incompatibility | Not Relevant | Partial | high |
+| `boxy` | Boxy | ready | Yes | Global rule: every region must be a filled rectangle. 1xN bars and single cells count as boxy; holes are not allowed. | Global Rule, One Region, Shapes | Global Rule Toggle | Candidate Filter | Not Relevant Beyond Rectangle Detection | Yes | high |
+| `non_boxy` | Non-Boxy | ready | Yes | Global rule: opposite of Boxy. Filled rectangles, bars, and single cells are forbidden. It can coexist with Shape Bank. | Global Rule, One Region, Shapes | Global Rule Toggle | Candidate Filter | Not Relevant Beyond Rectangle Detection | Yes | high |
 | `bricky` | Bricky | ready | No | Global boundary-graph rule: forbids exactly four border segments meeting at a grid vertex, corresponding to four region corners meeting. It can include outer border, though outer border usually cannot reach degree 4. | Global Rule, Boundary Graph, Grid Vertices | Global Rule Toggle | Boundary Graph Constraint | Not Relevant | Partial | high |
 | `loopy` | Loopy | ready | No | Global boundary-graph rule: forbids exactly three border segments meeting at a grid vertex. It forbids T-junctions, cares about outer boundary, does not require loops, and allows degree 4 vertices when Bricky is not active. | Global Rule, Boundary Graph, Grid Vertices | Global Rule Toggle | Boundary Graph Constraint | Not Relevant | Partial | high |
-| `inequality` | Inequality | ready | No | Edge relation clue: compares adjacent region areas with strict inequality. The narrow/small side points to the smaller region; equality is invalid. | Edge Relation Clue, Two Adjacent Regions, Numbers | Oriented Inequality Edge Marker | Pairwise Candidate Incompatibility | Not Relevant | Partial | high |
+| `inequality` | Inequality | ready | Yes | Edge relation clue: compares adjacent region areas with strict inequality. The narrow/small side points to the smaller region; equality is invalid. | Edge Relation Clue, Two Adjacent Regions, Numbers | Oriented Inequality Edge Marker | Pairwise Candidate Incompatibility | Not Relevant | Partial | high |
 | `difference` | Difference | ready | Yes | Edge relation clue: compares adjacent regions by absolute area-size difference. A value of 0 means equal area, not necessarily same shape. | Edge Relation Clue, Two Adjacent Regions, Numbers | Difference Edge Relation Marker, Nonnegative Integer Difference | Pairwise Candidate Incompatibility | Not Relevant | Partial | high |
 | `watchtower` | Watchtower | ready | No | Vertex/corner clue: counts how many distinct regions touch the clue vertex. Values are 1 to 4; a value of 1 means all existing cells around the vertex belong to the same region. | Vertex Clue, Corner Clue, Grid Vertices, Region Count | Watchtower Vertex Value 1 To 4 | Boundary Vertex Region Count Constraint | Not Relevant | Partial | high |
 | `compass` | Compass | ready | No | Cell clue: counts cells of the clue's own region in four half-plane directions N, E, S, and W. Diagonal cells contribute to both relevant directions, the clue cell itself does not count, and missing directions impose no restriction. | Cell Clue, Numbers, Directions, One Region | Compass Directional Numbers N E S W | Candidate Filter | Absolute Directions Matter | Yes | high |
@@ -53,16 +53,8 @@ Current status summary: 22 ready, 0 experimental, 0 blocked. 9 rules are impleme
 ## Ready But Not Implemented
 
 - `palisade`: Cell clue: describes which sides around the clue cell are borders. Icon rotation does not matter. Types are empty, one_sided, corner, opposite, three_sided, and full.
-- `match`: Global rule: all regions in the puzzle must have the same shape. There are no groups/subsets. Rotations and reflections count as the same shape.
-- `mismatch`: Global rule: all regions in the puzzle must have distinct shapes. Rotations and reflections count as the same shape.
-- `range`: Global rule: every region area must be within an inclusive range. It supports min-only, max-only, or min+max; complex disjoint ranges are not part of the mechanic.
-- `solitude`: Global rule: every region must contain exactly one counted cell symbol or clue. Counted things are cell-based clues/symbols; Rose Windows count only when the Rose rule has a single symbol type. Global rule cards do not count.
-- `size_separation`: Global rule: edge-adjacent regions must have different areas. Corner-touching does not count.
-- `boxy`: Global rule: every region must be a filled rectangle. 1xN bars and single cells count as boxy; holes are not allowed.
-- `non_boxy`: Global rule: opposite of Boxy. Filled rectangles, bars, and single cells are forbidden. It can coexist with Shape Bank.
 - `bricky`: Global boundary-graph rule: forbids exactly four border segments meeting at a grid vertex, corresponding to four region corners meeting. It can include outer border, though outer border usually cannot reach degree 4.
 - `loopy`: Global boundary-graph rule: forbids exactly three border segments meeting at a grid vertex. It forbids T-junctions, cares about outer boundary, does not require loops, and allows degree 4 vertices when Bricky is not active.
-- `inequality`: Edge relation clue: compares adjacent region areas with strict inequality. The narrow/small side points to the smaller region; equality is invalid.
 - `watchtower`: Vertex/corner clue: counts how many distinct regions touch the clue vertex. Values are 1 to 4; a value of 1 means all existing cells around the vertex belong to the same region.
 - `compass`: Cell clue: counts cells of the clue's own region in four half-plane directions N, E, S, and W. Diagonal cells contribute to both relevant directions, the clue cell itself does not count, and missing directions impose no restriction.
 
@@ -195,7 +187,7 @@ Current status summary: 22 ready, 0 experimental, 0 blocked. 9 rules are impleme
 
 ### `match`
 
-- Implementation status: ready; implemented: No.
+- Implementation status: ready; implemented: Yes.
 - Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
 - Confirmed mechanics:
   - Global rule.
@@ -208,7 +200,7 @@ Current status summary: 22 ready, 0 experimental, 0 blocked. 9 rules are impleme
 
 ### `mismatch`
 
-- Implementation status: ready; implemented: No.
+- Implementation status: ready; implemented: Yes.
 - Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
 - Confirmed mechanics:
   - Global rule.
@@ -220,7 +212,7 @@ Current status summary: 22 ready, 0 experimental, 0 blocked. 9 rules are impleme
 
 ### `range`
 
-- Implementation status: ready; implemented: No.
+- Implementation status: ready; implemented: Yes.
 - Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
 - Confirmed mechanics:
   - Global rule.
@@ -233,7 +225,7 @@ Current status summary: 22 ready, 0 experimental, 0 blocked. 9 rules are impleme
 
 ### `solitude`
 
-- Implementation status: ready; implemented: No.
+- Implementation status: ready; implemented: Yes.
 - Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
 - Confirmed mechanics:
   - Global rule.
@@ -247,7 +239,7 @@ Current status summary: 22 ready, 0 experimental, 0 blocked. 9 rules are impleme
 
 ### `size_separation`
 
-- Implementation status: ready; implemented: No.
+- Implementation status: ready; implemented: Yes.
 - Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
 - Confirmed mechanics:
   - Global rule.
@@ -259,7 +251,7 @@ Current status summary: 22 ready, 0 experimental, 0 blocked. 9 rules are impleme
 
 ### `boxy`
 
-- Implementation status: ready; implemented: No.
+- Implementation status: ready; implemented: Yes.
 - Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
 - Confirmed mechanics:
   - Global rule.
@@ -273,7 +265,7 @@ Current status summary: 22 ready, 0 experimental, 0 blocked. 9 rules are impleme
 
 ### `non_boxy`
 
-- Implementation status: ready; implemented: No.
+- Implementation status: ready; implemented: Yes.
 - Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
 - Confirmed mechanics:
   - Global rule.
@@ -314,7 +306,7 @@ Current status summary: 22 ready, 0 experimental, 0 blocked. 9 rules are impleme
 
 ### `inequality`
 
-- Implementation status: ready; implemented: No.
+- Implementation status: ready; implemented: Yes.
 - Confirmation basis: Confirmed directly by the user from in-game observations in project conversation; sourceUrls remain historical external research references, not the authority for these mechanics.
 - Confirmed mechanics:
   - Edge relation clue.

@@ -71,6 +71,7 @@ const el = {
   areaClueValueInput: document.getElementById("areaClueValueInput"),
   relationRuleInput: document.getElementById("relationRuleInput"),
   differenceValueInput: document.getElementById("differenceValueInput"),
+  inequalityDirectionInput: document.getElementById("inequalityDirectionInput"),
   relationPickHint: document.getElementById("relationPickHint"),
   polyominoClueGrid: document.getElementById("polyominoClueGrid"),
   polyominoRotationsInput: document.getElementById("polyominoRotationsInput"),
@@ -145,6 +146,8 @@ function bindEvents() {
     }
     const mingleOption = event.target.closest("[data-mingle-option]");
     if (mingleOption) updateMingleOption(mingleOption.dataset.mingleOption, mingleOption.checked);
+    const rangeOption = event.target.closest("[data-range-option]");
+    if (rangeOption) updateRangeOption(rangeOption.dataset.rangeOption, rangeOption.value);
   });
 
   el.rulePalette.addEventListener("click", (event) => {
@@ -204,6 +207,12 @@ function bindEvents() {
     if (target.dataset.differenceValue !== undefined) {
       const value = Math.max(0, Number(target.value) || 0);
       puzzle = updateClueById(clueId, (clue) => ({ ...clue, value, params: { ...(clue.params ?? {}), difference: value } }));
+      clearComputed();
+      render();
+    }
+    if (target.dataset.inequalityDirection !== undefined) {
+      const direction = target.value === "gt" ? "gt" : "lt";
+      puzzle = updateClueById(clueId, (clue) => ({ ...clue, params: { ...(clue.params ?? {}), direction } }));
       clearComputed();
       render();
     }
@@ -605,6 +614,20 @@ function enableRule(id) {
     puzzle.rules[id] = puzzle.rules[id] ?? {};
     el.relationRuleInput.value = id;
     setCurrentTool("relation");
+    return;
+  }
+  if (id === "inequality") {
+    puzzle.rules.inequality = puzzle.rules.inequality ?? {};
+    el.relationRuleInput.value = "inequality";
+    setCurrentTool("relation");
+    return;
+  }
+  if (id === "range") {
+    puzzle.rules.range = puzzle.rules.range ?? { min: 1, max: Math.max(1, Number(puzzle.rules.area) || 4) };
+    return;
+  }
+  if (["match", "mismatch", "solitude", "size_separation", "boxy", "non_boxy"].includes(id)) {
+    puzzle.rules[id] = puzzle.rules[id] ?? {};
   }
 }
 
@@ -633,6 +656,17 @@ function updateMingleOption(option, checked) {
   const config = { ...(puzzle.rules.mingle_shape ?? {}) };
   config[option] = checked;
   puzzle.rules.mingle_shape = config;
+  puzzle = normalizePuzzle(puzzle);
+  clearComputed();
+  render();
+}
+
+function updateRangeOption(option, value) {
+  const config = { ...(puzzle.rules.range ?? {}) };
+  const number = Number(value);
+  if (value === "") delete config[option];
+  else config[option] = Number.isInteger(number) ? number : value;
+  puzzle.rules.range = config;
   puzzle = normalizePuzzle(puzzle);
   clearComputed();
   render();
@@ -684,7 +718,7 @@ function toolInfo(tool) {
     relation: {
       name: "Relation pair clue",
       description: "Click two active cells to add a relation clue between their eventual regions.",
-      params: `${ruleLabel(el.relationRuleInput.value)}${el.relationRuleInput.value === "difference" ? `, value ${Number(el.differenceValueInput.value) || 0}` : ""}. Delete relation clues with Erase clue or the inspector.`
+      params: `${ruleLabel(el.relationRuleInput.value)}${relationToolParameterText()}. Delete relation clues with Erase clue or the inspector.`
     },
     areaNumber: {
       name: "Area number clue",
@@ -703,6 +737,14 @@ function toolInfo(tool) {
     }
   };
   return common[tool] ?? common.cell;
+}
+
+function relationToolParameterText() {
+  if (el.relationRuleInput.value === "difference") return `, value ${Number(el.differenceValueInput.value) || 0}`;
+  if (el.relationRuleInput.value === "inequality") {
+    return el.inequalityDirectionInput.value === "gt" ? ", first region > second region" : ", first region < second region";
+  }
+  return "";
 }
 
 function renderRulePalette() {
@@ -753,13 +795,20 @@ function ruleControlsHtml(id, active, disabled) {
   if (id === "precision") return `<div class="rule-controls"><p>Edit with the Precision area field.</p></div>`;
   if (id === "rose_window") return `<div class="rule-controls"><p>Edit required symbols with the Rose labels field.</p></div>`;
   if (id === "shape_bank") return `<div class="rule-controls"><p>Use the mini-grid or raw Shape Bank text.</p></div>`;
+  if (id === "range" && active) {
+    const config = puzzle.rules.range ?? {};
+    return `<div class="rule-controls">
+      <label>Min area <input type="number" min="1" max="99" value="${escapeHtml(config.min ?? "")}" data-range-option="min" /></label>
+      <label>Max area <input type="number" min="1" max="99" value="${escapeHtml(config.max ?? "")}" data-range-option="max" /></label>
+    </div>`;
+  }
   if (id === "area_number") {
     return `<div class="rule-controls"><button type="button" data-select-tool="areaNumber" data-status="Area Number placement tool selected.">Place area clues</button></div>`;
   }
   if (id === "polyomino") {
     return `<div class="rule-controls"><button type="button" data-select-tool="polyomino" data-status="Polyomino placement tool selected.">Place polyomino clues</button></div>`;
   }
-  if (id === "gemini" || id === "delta" || id === "difference") {
+  if (id === "gemini" || id === "delta" || id === "difference" || id === "inequality") {
     return `<div class="rule-controls"><button type="button" data-select-tool="relation" data-relation-rule="${id}" data-status="${escapeHtml(ruleLabel(id))} relation tool selected.">Place relation clue</button></div>`;
   }
   if (id === "mingle_shape" && active) {
@@ -770,6 +819,9 @@ function ruleControlsHtml(id, active, disabled) {
       <label><input type="checkbox" data-mingle-option="allowRotations" ${checkedAttr(rotations !== false)} /> Rotation equivalence</label>
       <label><input type="checkbox" data-mingle-option="allowReflections" ${checkedAttr(reflections !== false)} /> Reflection equivalence</label>
     </div>`;
+  }
+  if (["match", "mismatch", "solitude", "size_separation", "boxy", "non_boxy"].includes(id) && active) {
+    return `<div class="rule-controls"><p>This global rule is active. Use JSON export/import for advanced parameters.</p></div>`;
   }
   return "";
 }
@@ -977,6 +1029,15 @@ function relationInspectorHtml(state) {
           <input type="number" min="0" max="20" value="${state.differenceValue ?? 0}" data-clue-id="${escapeHtml(state.clue.id)}" data-difference-value />
         </label>`
       : "";
+  const inequalityInput =
+    state.ruleId === "inequality"
+      ? `<label class="stacked">Direction
+          <select data-clue-id="${escapeHtml(state.clue.id)}" data-inequality-direction>
+            <option value="lt" ${state.clue.params?.direction === "gt" ? "" : "selected"}>First region &lt; second region</option>
+            <option value="gt" ${state.clue.params?.direction === "gt" ? "selected" : ""}>First region &gt; second region</option>
+          </select>
+        </label>`
+      : "";
   return `<div class="inspector-stack">
     <section class="inspector-card">
       <h3>${escapeHtml(ruleLabel(state.ruleId))}</h3>
@@ -985,6 +1046,7 @@ function relationInspectorHtml(state) {
         <dt>Rule type</dt><dd>${escapeHtml(state.ruleId)}</dd>
       </dl>
       ${differenceInput}
+      ${inequalityInput}
       <button type="button" data-delete-clue-id="${escapeHtml(state.clue.id)}">Delete relation clue</button>
     </section>
   </div>`;
@@ -1142,6 +1204,9 @@ function upsertRelationClue(ruleId, firstCell, secondCell) {
     clue.value = value;
     clue.params = { difference: value };
   }
+  if (ruleId === "inequality") {
+    clue.params = { direction: el.inequalityDirectionInput.value === "gt" ? "gt" : "lt" };
+  }
   const rules = { ...puzzle.rules, [ruleId]: puzzle.rules[ruleId] ?? {} };
   const clues = (puzzle.clues ?? []).filter((existing) => existing.id !== clue.id);
   clues.push(clue);
@@ -1191,6 +1256,7 @@ function relationClueLabel(clue) {
   if (clue.ruleId === "gemini") return "G";
   if (clue.ruleId === "delta") return "D";
   if (clue.ruleId === "difference") return `Diff ${clue.value ?? clue.params?.difference ?? 0}`;
+  if (clue.ruleId === "inequality") return clue.params?.direction === "gt" ? ">" : "<";
   return ruleLabel(clue.ruleId);
 }
 

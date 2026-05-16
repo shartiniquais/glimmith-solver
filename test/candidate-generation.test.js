@@ -55,6 +55,21 @@ test("candidate generation plan can use area number clues as a source", () => {
   assert.deepEqual(plan.areas, [2]);
 });
 
+test("candidate generation plan can use Range as a source", () => {
+  const puzzle = normalizePuzzle({
+    width: 3,
+    height: 1,
+    rules: {
+      area: 0,
+      range: { min: 1, max: 2 }
+    }
+  });
+
+  const plan = buildCandidateGenerationPlan(puzzle);
+  assert.equal(plan.kind, "range");
+  assert.deepEqual(plan.areas, [1, 2]);
+});
+
 test("candidate generation plan can use polyomino clues as a source", () => {
   const puzzle = normalizePuzzle({
     width: 2,

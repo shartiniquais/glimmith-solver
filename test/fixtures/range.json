@@ -1,0 +1,44 @@
+{
+  "fixtures": [
+    {
+      "name": "range-four-cell-source-unique",
+      "rulesCovered": ["range"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 1,
+      "expectedForcedSteps": ["forced_region"],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "rules": { "area": 0, "range": { "min": 4, "max": 4 } }
+      }
+    },
+    {
+      "name": "range-line-domino-impossible",
+      "rulesCovered": ["range"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 3,
+        "height": 1,
+        "rules": { "area": 0, "range": { "min": 2, "max": 2 } }
+      }
+    },
+    {
+      "name": "range-invalid-bounds",
+      "rulesCovered": ["range"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["requires `min` to be less than or equal to `max`"],
+      "puzzle": {
+        "width": 1,
+        "height": 1,
+        "rules": { "area": 0, "range": { "min": 3, "max": 2 } }
+      }
+    }
+  ]
+}

@@ -93,7 +93,37 @@ Direction/visibility rules:
 - `compass`: cell clue counting own-region cells in N/E/S/W half-planes; diagonal cells can count in two directions.
 - `watchtower`: vertex/corner clue counting distinct regions touching the clue vertex, value 1 to 4.
 
-## Implementation Notes For Later
+## Implementation Notes
+
+Implemented in the current candidate/constraint solver:
+
+- `precision`
+- `shape_bank`
+- `rose_window`
+- `polyomino`
+- `area_number`
+- `range`
+- `solitude`
+- `boxy`
+- `non_boxy`
+- `gemini`
+- `delta`
+- `mingle_shape`
+- `size_separation`
+- `inequality`
+- `difference`
+- `match`
+- `mismatch`
+
+Still deferred because they need border, vertex, or directional geometry beyond the current batch:
+
+- `compass`
+- `palisade`
+- `bricky`
+- `loopy`
+- `watchtower`
+
+Implementation model categories:
 
 Straightforward candidate filters:
 
@@ -126,4 +156,4 @@ Boundary graph constraints:
 - `loopy`
 - `watchtower`
 
-Do not guess solver logic beyond these confirmed mechanics. Newly ready rules should first receive validation/schema/UI support, then focused solver implementations with tests that prove each rule eliminates an otherwise valid solution.
+Do not guess solver logic beyond these confirmed mechanics. Deferred rules should first receive validation/schema/UI support, then focused solver implementations with tests that prove each rule eliminates an otherwise valid solution.

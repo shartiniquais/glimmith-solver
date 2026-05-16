@@ -474,6 +474,11 @@ function relationSatisfied(puzzle, clue, left, right) {
     const value = Number(clue.value ?? clue.params?.difference);
     return Number.isInteger(value) && Math.abs(left.area - right.area) === value;
   }
+  if (clue.ruleId === "inequality") {
+    const direction = clue.params?.direction;
+    if (direction === "lt") return left.area < right.area;
+    if (direction === "gt") return left.area > right.area;
+  }
   return false;
 }
 
@@ -489,6 +494,10 @@ function relationPairReason(puzzle, clue, left, right) {
   if (clue.ruleId === "difference") {
     const value = Number(clue.value ?? clue.params?.difference);
     return `Difference clue "${clue.id}" requires an area gap of ${value}. Only ${leftLabels} and ${rightLabels} satisfy it.`;
+  }
+  if (clue.ruleId === "inequality") {
+    const direction = clue.params?.direction === "gt" ? "greater than" : "less than";
+    return `Inequality clue "${clue.id}" requires the first referenced region to be ${direction} the second. Only ${leftLabels} and ${rightLabels} satisfy it.`;
   }
   return `Clue "${clue.id}" has one compatible region pair: ${leftLabels} and ${rightLabels}.`;
 }
@@ -548,7 +557,8 @@ function ruleLabel(ruleId) {
   return {
     gemini: "Gemini",
     delta: "Delta",
-    difference: "Difference"
+    difference: "Difference",
+    inequality: "Inequality"
   }[ruleId] ?? ruleId;
 }
 

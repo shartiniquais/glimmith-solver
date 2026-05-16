@@ -21,14 +21,14 @@ Legend:
 | mingle_shape | ready | Yes | Yes | Yes | Yes | Yes | Pairwise adjacent same-shape rejection; corner contact is not counted. |
 | area_number | ready | Yes | Yes | Yes | Yes | Yes | Cell-local positive integer area clue. |
 | difference | ready | Yes | Yes | Yes | Yes | Yes | Edge relation clue for absolute area difference; zero means equal area. |
-| match | ready | No | Registry validation only | No | Placeholder | No | Ready global all-same-shape rule; not implemented yet. |
-| mismatch | ready | No | Registry validation only | No | Placeholder | No | Ready global all-distinct-shapes rule; not implemented yet. |
-| range | ready | No | Registry validation only | No | Placeholder | No | Ready inclusive min/max area rule; not implemented yet. |
-| size_separation | ready | No | Registry validation only | No | Placeholder | No | Ready edge-adjacent different-area rule; not implemented yet. |
-| boxy | ready | No | Registry validation only | No | Placeholder | No | Ready filled-rectangle rule; not implemented yet. |
-| non_boxy | ready | No | Registry validation only | No | Placeholder | No | Ready non-rectangle rule; not implemented yet. |
-| inequality | ready | No | Registry validation only | No | Placeholder | No | Ready strict adjacent area inequality clue; not implemented yet. |
-| solitude | ready | No | Registry validation only | No | Placeholder | No | Ready exactly-one counted cell clue/symbol rule; not implemented yet. |
+| match | ready | Yes | Yes | Yes | JSON-compatible toggle | Yes | Global all-same-shape pairwise constraint. |
+| mismatch | ready | Yes | Yes | Yes | JSON-compatible toggle | Yes | Global all-distinct-shapes pairwise constraint. |
+| range | ready | Yes | Yes | Yes | Minimal min/max fields | Yes | Inclusive min/max area filter and candidate source. |
+| size_separation | ready | Yes | Yes | Yes | JSON-compatible toggle | Yes | Edge-adjacent regions must have different areas. |
+| boxy | ready | Yes | Yes | Yes | JSON-compatible toggle | Yes | Candidate filter for filled rectangles, bars, and single cells. |
+| non_boxy | ready | Yes | Yes | Yes | JSON-compatible toggle | Yes | Candidate filter forbidding filled rectangles, bars, and single cells. |
+| inequality | ready | Yes | Yes | Yes | Relation placement with direction selector | Yes | Strict two-region area inequality relation clue. |
+| solitude | ready | Yes | Yes | Yes | JSON-compatible toggle | Yes | Candidate filter requiring exactly one counted cell clue or eligible Rose symbol per region. |
 | palisade | ready | No | Registry validation only | No | Placeholder | No | Ready local border-pattern cell clue; not implemented yet. |
 | bricky | ready | No | Registry validation only | No | Placeholder | No | Ready boundary-vertex degree-4 prohibition; not implemented yet. |
 | loopy | ready | No | Registry validation only | No | Placeholder | No | Ready boundary-vertex degree-3 prohibition; not implemented yet. |

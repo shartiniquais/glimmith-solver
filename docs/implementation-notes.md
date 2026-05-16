@@ -2,7 +2,7 @@
 
 Updated: 2026-05-16.
 
-## Batch 1 Implemented Rules
+## Implemented Rules
 
 The solver now has registered, data-driven implementations for:
 
@@ -15,11 +15,20 @@ The solver now has registered, data-driven implementations for:
 - `area_number`: cell clue whose value must equal the containing region area.
 - `polyomino`: cell clue whose shape must match the containing region shape.
 - `mingle_shape`: pairwise constraint rejecting orthogonally adjacent duplicate shapes. Corner-only contact is not treated as adjacency.
+- `match`: global constraint requiring all selected regions to share one shape key.
+- `mismatch`: global constraint requiring all selected regions to have distinct shape keys.
+- `range`: inclusive min/max candidate filter and candidate source when no stronger source exists.
+- `solitude`: candidate filter requiring exactly one counted cell clue or eligible Rose symbol per region.
+- `size_separation`: pairwise constraint rejecting equal-area orthogonally adjacent regions.
+- `boxy`: candidate filter for regions that exactly fill their bounding rectangle.
+- `non_boxy`: candidate filter rejecting filled rectangles, bars, and single cells.
+- `inequality`: strict area inequality relation clue between two referenced regions.
 
-`area_number` and `polyomino` can also act as candidate sources when there is no Precision area and no Shape Bank:
+`area_number`, `polyomino`, and `range` can also act as candidate sources when there is no Precision area and no Shape Bank:
 
 - Area Number generates connected candidates for the distinct clue areas.
 - Polyomino generates reusable placements from the clue shapes.
+- Range generates connected candidates for inclusive min/max area bounds.
 
 Candidate filters still enforce the clue semantics after generation.
 
@@ -59,4 +68,4 @@ Gemini, Delta, and Difference use generic relation clues with `regionRefs`, so t
 
 - Area Number candidate sourcing is conservative: without Precision or Shape Bank, it generates candidates for clue areas. Puzzles with unclued regions of other sizes will need another candidate source.
 - Polyomino candidate sourcing uses clue shapes as reusable placement sources. If later evidence shows consumable or grouped shape behavior, that should be added explicitly.
-- The remaining ready rules are validation-only and are rejected by the solver with a known-ready/not-implemented message until their solver modules are added.
+- Palisade, Bricky, Loopy, Compass, and Watchtower remain validation-only and are rejected by the solver with a known-ready/not-implemented message until their solver modules are added.

@@ -107,14 +107,22 @@ test("implemented flags separate solver support from ready mechanics", () => {
   const implemented = inventory.rules.filter((rule) => rule.implemented).map((rule) => rule.id).sort();
   assert.deepEqual(implemented, [
     "area_number",
+    "boxy",
     "delta",
     "difference",
     "gemini",
+    "inequality",
+    "match",
     "mingle_shape",
+    "mismatch",
+    "non_boxy",
     "polyomino",
     "precision",
+    "range",
     "rose_window",
     "shape_bank",
+    "size_separation",
+    "solitude",
   ]);
 
   const readyNotImplemented = inventory.rules
@@ -122,18 +130,10 @@ test("implemented flags separate solver support from ready mechanics", () => {
     .map((rule) => rule.id)
     .sort();
   assert.deepEqual(readyNotImplemented, [
-    "boxy",
     "bricky",
     "compass",
-    "inequality",
     "loopy",
-    "match",
-    "mismatch",
-    "non_boxy",
     "palisade",
-    "range",
-    "size_separation",
-    "solitude",
     "watchtower",
   ]);
 });

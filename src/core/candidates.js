@@ -13,6 +13,7 @@ import { candidateShapeForComparison } from "./shape-comparison.js";
 import { areaNumberCandidateAreas } from "./rules/area-number.js";
 import { edgeConstraintsRule } from "./rules/edge-constraints.js";
 import { polyominoCandidateShapes } from "./rules/polyomino.js";
+import { rangeCandidateAreas } from "./rules/range.js";
 import { applyCandidateFilters, createRuleContext, explainCandidateRejection } from "./rules/registry.js";
 
 const DEFAULT_MAX_CANDIDATES = 80000;
@@ -126,6 +127,16 @@ export function buildCandidateGenerationPlan(puzzle, context = createRuleContext
     };
   }
 
+  const rangeAreas = rangeCandidateAreas(context);
+  if (rangeAreas.areas.length > 0) {
+    return {
+      kind: "range",
+      ruleId: "range",
+      areas: rangeAreas.areas,
+      errors: [...errors, ...rangeAreas.errors]
+    };
+  }
+
   // Extension point for future rules: add candidate sources here and keep
   // rule-specific candidate generation out of the exact-cover search.
   return {
@@ -165,6 +176,9 @@ function generateRawCandidatesForPlan(puzzle, plan, maxCandidates) {
     return generateConnectedCandidates(puzzle, plan.area, maxCandidates);
   }
   if (plan.kind === "area_number_clues") {
+    return generateConnectedCandidatesForAreas(puzzle, plan.areas, maxCandidates);
+  }
+  if (plan.kind === "range") {
     return generateConnectedCandidatesForAreas(puzzle, plan.areas, maxCandidates);
   }
   return [];

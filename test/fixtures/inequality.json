@@ -1,0 +1,75 @@
+{
+  "fixtures": [
+    {
+      "name": "inequality-left-smaller-unique",
+      "rulesCovered": ["inequality"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 2,
+      "expectedForcedSteps": ["candidate_eliminated", "forced_region"],
+      "puzzle": {
+        "width": 3,
+        "height": 1,
+        "clues": [
+          { "id": "one", "type": "cell", "ruleId": "area_number", "value": 1, "location": { "type": "cell", "cell": 0 } },
+          { "id": "two", "type": "cell", "ruleId": "area_number", "value": 2, "location": { "type": "cell", "cell": 1 } },
+          {
+            "id": "left_less",
+            "type": "relation",
+            "ruleId": "inequality",
+            "params": { "direction": "lt" },
+            "regionRefs": [{ "cell": 0 }, { "cell": 1 }]
+          }
+        ],
+        "rules": { "area": 0, "inequality": {} }
+      }
+    },
+    {
+      "name": "inequality-left-greater-impossible",
+      "rulesCovered": ["inequality"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 3,
+        "height": 1,
+        "clues": [
+          { "id": "one", "type": "cell", "ruleId": "area_number", "value": 1, "location": { "type": "cell", "cell": 0 } },
+          { "id": "two", "type": "cell", "ruleId": "area_number", "value": 2, "location": { "type": "cell", "cell": 1 } },
+          {
+            "id": "left_greater",
+            "type": "relation",
+            "ruleId": "inequality",
+            "params": { "direction": "gt" },
+            "regionRefs": [{ "cell": 0 }, { "cell": 1 }]
+          }
+        ],
+        "rules": { "area": 0, "inequality": {} }
+      }
+    },
+    {
+      "name": "inequality-invalid-direction",
+      "rulesCovered": ["inequality"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["requires params.direction \"lt\" or \"gt\""],
+      "puzzle": {
+        "width": 2,
+        "height": 1,
+        "clues": [
+          {
+            "id": "bad_inequality",
+            "type": "relation",
+            "ruleId": "inequality",
+            "params": { "direction": "sideways" },
+            "regionRefs": [{ "cell": 0 }, { "cell": 1 }]
+          }
+        ],
+        "rules": { "area": 1, "inequality": {} }
+      }
+    }
+  ]
+}

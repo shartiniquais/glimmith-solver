@@ -1,0 +1,52 @@
+{
+  "fixtures": [
+    {
+      "name": "solitude-two-counted-clues-unique",
+      "rulesCovered": ["solitude"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 2,
+      "expectedForcedSteps": ["forced_region"],
+      "puzzle": {
+        "width": 2,
+        "height": 1,
+        "clues": [
+          { "id": "left", "type": "cell", "ruleId": "area_number", "value": 1, "location": { "type": "cell", "cell": 0 } },
+          { "id": "right", "type": "cell", "ruleId": "area_number", "value": 1, "location": { "type": "cell", "cell": 1 } }
+        ],
+        "rules": { "area": 1, "solitude": {} }
+      }
+    },
+    {
+      "name": "solitude-empty-region-impossible",
+      "rulesCovered": ["solitude"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 2,
+        "height": 1,
+        "clues": [
+          { "id": "left", "type": "cell", "ruleId": "area_number", "value": 1, "location": { "type": "cell", "cell": 0 } }
+        ],
+        "rules": { "area": 1, "solitude": {} }
+      }
+    },
+    {
+      "name": "solitude-invalid-active-cells",
+      "rulesCovered": ["solitude"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["appears more than once"],
+      "puzzle": {
+        "width": 2,
+        "height": 1,
+        "activeCells": [0, 0],
+        "rules": { "area": 1, "solitude": {} }
+      }
+    }
+  ]
+}

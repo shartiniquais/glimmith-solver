@@ -76,10 +76,17 @@
                   <option value="gemini">Gemini / same shape</option>
                   <option value="delta">Delta / different shape</option>
                   <option value="difference">Difference / area gap</option>
+                  <option value="inequality">Inequality / area order</option>
                 </select>
               </label>
               <label class="stacked">Difference value
                 <input id="differenceValueInput" type="number" min="0" max="20" value="1" />
+              </label>
+              <label class="stacked">Inequality direction
+                <select id="inequalityDirectionInput">
+                  <option value="lt">First region &lt; second region</option>
+                  <option value="gt">First region &gt; second region</option>
+                </select>
               </label>
               <p id="relationPickHint" class="hint">Choose Relation pair clue, then click two active cells in different regions.</p>
               <div class="mini-editor">

@@ -1,0 +1,54 @@
+{
+  "fixtures": [
+    {
+      "name": "mismatch-mixed-triominoes-unique",
+      "rulesCovered": ["mismatch"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 2,
+      "expectedForcedSteps": ["candidate_eliminated", "forced_region"],
+      "puzzle": {
+        "width": 3,
+        "height": 3,
+        "activeCells": [0, 1, 2, 3, 4, 6],
+        "edgeConstraints": {
+          "0-1": { "state": "cut" },
+          "0-3": { "state": "join" },
+          "1-2": { "state": "join" },
+          "1-4": { "state": "join" },
+          "3-4": { "state": "cut" },
+          "3-6": { "state": "join" }
+        },
+        "rules": { "area": 3, "mismatch": {} }
+      }
+    },
+    {
+      "name": "mismatch-duplicate-dominoes-impossible",
+      "rulesCovered": ["mismatch"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 4,
+        "height": 1,
+        "rules": { "area": 2, "mismatch": {} }
+      }
+    },
+    {
+      "name": "mismatch-invalid-active-cells",
+      "rulesCovered": ["mismatch"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["appears more than once"],
+      "puzzle": {
+        "width": 2,
+        "height": 1,
+        "activeCells": [0, 0],
+        "rules": { "area": 1, "mismatch": {} }
+      }
+    }
+  ]
+}

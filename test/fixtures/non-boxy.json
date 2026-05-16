@@ -1,0 +1,46 @@
+{
+  "fixtures": [
+    {
+      "name": "non-boxy-l-triomino-unique",
+      "rulesCovered": ["non_boxy"],
+      "expectedStatus": "unique_solution",
+      "expectedSolutionCount": 1,
+      "expectedRegionCount": 1,
+      "expectedForcedSteps": ["forced_region"],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "activeCells": [0, 1, 2],
+        "rules": { "area": 3, "non_boxy": {} }
+      }
+    },
+    {
+      "name": "non-boxy-square-impossible",
+      "rulesCovered": ["non_boxy"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "puzzle": {
+        "width": 2,
+        "height": 2,
+        "rules": { "area": 4, "non_boxy": {} }
+      }
+    },
+    {
+      "name": "non-boxy-invalid-active-cells",
+      "rulesCovered": ["non_boxy"],
+      "expectedStatus": "no_solution",
+      "expectedSolutionCount": 0,
+      "expectedRegionCount": 0,
+      "expectedForcedSteps": [],
+      "expectedValidationErrors": ["appears more than once"],
+      "puzzle": {
+        "width": 2,
+        "height": 1,
+        "activeCells": [0, 0],
+        "rules": { "area": 1, "non_boxy": {} }
+      }
+    }
+  ]
+}

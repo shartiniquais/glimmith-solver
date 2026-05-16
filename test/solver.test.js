@@ -250,9 +250,140 @@ test("Mingle Shape respects reflection equivalence", () => {
   assert.equal(withReflections.status, "no_solution");
 });
 
+test("Match requires all regions to share one shape", () => {
+  const sameShape = createPuzzle(4, 1);
+  sameShape.rules.area = 2;
+  sameShape.rules.match = {};
+  const allowed = solvePuzzle(sameShape, { limit: 2 });
+  assert.equal(allowed.status, "unique_solution");
+  assert.deepEqual(allowed.solutions[0].regions.map((region) => region.cells), [[0, 1], [2, 3]]);
+
+  const mixedShapes = forcedMixedTriominoPuzzle();
+  mixedShapes.rules.match = {};
+  const rejected = solvePuzzle(mixedShapes, { limit: 2 });
+  assert.equal(rejected.status, "no_solution");
+});
+
+test("Mismatch requires all regions to have distinct shapes", () => {
+  const duplicateShape = createPuzzle(4, 1);
+  duplicateShape.rules.area = 2;
+  duplicateShape.rules.mismatch = {};
+  const rejected = solvePuzzle(duplicateShape, { limit: 2 });
+  assert.equal(rejected.status, "no_solution");
+
+  const mixedShapes = forcedMixedTriominoPuzzle();
+  mixedShapes.rules.mismatch = {};
+  const allowed = solvePuzzle(mixedShapes, { limit: 2 });
+  assert.equal(allowed.status, "unique_solution");
+  assert.deepEqual(allowed.solutions[0].regions.map((region) => region.cells), [[0, 3, 6], [1, 2, 4]]);
+});
+
+test("Range can source and filter bounded-area candidates", () => {
+  const puzzle = createPuzzle(2, 2);
+  puzzle.rules.area = 0;
+  puzzle.rules.range = { min: 4, max: 4 };
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "unique_solution");
+  assert.deepEqual(result.solutions[0].regions.map((region) => region.cells), [[0, 1, 2, 3]]);
+});
+
+test("Solitude requires exactly one counted clue or eligible Rose symbol per region", () => {
+  const puzzle = createPuzzle(2, 1);
+  puzzle.rules.area = 1;
+  puzzle.rules.solitude = {};
+  puzzle.clues = [
+    { id: "left", type: "cell", ruleId: "area_number", value: 1, location: { type: "cell", cell: 0 } },
+    { id: "right", type: "cell", ruleId: "area_number", value: 1, location: { type: "cell", cell: 1 } }
+  ];
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "unique_solution");
+  assert.equal(result.solutions[0].regions.length, 2);
+
+  puzzle.clues.pop();
+  const rejected = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(rejected.status, "no_solution");
+});
+
+test("Size Separation rejects equal-area edge-adjacent regions", () => {
+  const puzzle = createPuzzle(4, 1);
+  puzzle.rules.area = 2;
+  puzzle.rules.size_separation = {};
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "no_solution");
+});
+
+test("Boxy and Non-Boxy filter rectangular regions", () => {
+  const boxy = createPuzzle(2, 2);
+  boxy.rules.area = 4;
+  boxy.rules.boxy = {};
+  const boxyResult = solvePuzzle(boxy, { limit: 2 });
+  assert.equal(boxyResult.status, "unique_solution");
+
+  const lTriomino = createPuzzle(2, 2);
+  lTriomino.rules.area = 3;
+  lTriomino.active = [true, true, true, false];
+  lTriomino.activeCells = [0, 1, 2];
+  lTriomino.rules.boxy = {};
+  const boxyRejected = solvePuzzle(lTriomino, { limit: 2 });
+  assert.equal(boxyRejected.status, "no_solution");
+
+  lTriomino.rules.boxy = undefined;
+  lTriomino.rules.non_boxy = {};
+  const nonBoxyResult = solvePuzzle(lTriomino, { limit: 2 });
+  assert.equal(nonBoxyResult.status, "unique_solution");
+
+  const square = createPuzzle(2, 2);
+  square.rules.area = 4;
+  square.rules.non_boxy = {};
+  const nonBoxyRejected = solvePuzzle(square, { limit: 2 });
+  assert.equal(nonBoxyRejected.status, "no_solution");
+});
+
+test("Inequality relation clues compare referenced region areas", () => {
+  const puzzle = createPuzzle(3, 1);
+  puzzle.rules.area = 0;
+  puzzle.rules.inequality = {};
+  puzzle.clues = [
+    { id: "one", type: "cell", ruleId: "area_number", value: 1, location: { type: "cell", cell: 0 } },
+    { id: "two", type: "cell", ruleId: "area_number", value: 2, location: { type: "cell", cell: 1 } },
+    {
+      id: "left_less",
+      type: "relation",
+      ruleId: "inequality",
+      params: { direction: "lt" },
+      regionRefs: [{ cell: 0 }, { cell: 1 }]
+    }
+  ];
+
+  const result = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(result.status, "unique_solution");
+  assert.deepEqual(result.solutions[0].regions.map((region) => region.cells), [[0], [1, 2]]);
+
+  puzzle.clues[2].params.direction = "gt";
+  const rejected = solvePuzzle(puzzle, { limit: 2 });
+  assert.equal(rejected.status, "no_solution");
+});
+
 function mirroredMinglePuzzle(mingleConfig) {
   const puzzle = mirroredShapePuzzle();
   puzzle.rules.mingle_shape = mingleConfig;
+  return puzzle;
+}
+
+function forcedMixedTriominoPuzzle() {
+  let puzzle = createPuzzle(3, 3);
+  puzzle.rules.area = 3;
+  puzzle.active = [true, true, true, true, true, false, true, false, false];
+  puzzle.activeCells = [0, 1, 2, 3, 4, 6];
+  puzzle = setEdgeState(puzzle, 0, 3, "join");
+  puzzle = setEdgeState(puzzle, 3, 6, "join");
+  puzzle = setEdgeState(puzzle, 1, 2, "join");
+  puzzle = setEdgeState(puzzle, 1, 4, "join");
+  puzzle = setEdgeState(puzzle, 0, 1, "cut");
+  puzzle = setEdgeState(puzzle, 3, 4, "cut");
   return puzzle;
 }
 

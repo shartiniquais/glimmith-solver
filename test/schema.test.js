@@ -165,21 +165,7 @@ test("validation distinguishes unknown and ready-unimplemented rules", () => {
   });
   assert.equal(polyomino.ok, true);
 
-  for (const id of [
-    "match",
-    "mismatch",
-    "range",
-    "size_separation",
-    "boxy",
-    "non_boxy",
-    "inequality",
-    "solitude",
-    "palisade",
-    "bricky",
-    "loopy",
-    "compass",
-    "watchtower",
-  ]) {
+  for (const id of ["palisade", "bricky", "loopy", "compass", "watchtower"]) {
     const result = validatePuzzle({
       width: 1,
       height: 1,

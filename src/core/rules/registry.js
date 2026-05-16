@@ -1,10 +1,16 @@
 import { areaNumberRule } from "./area-number.js";
+import { boxyRule, nonBoxyRule } from "./area-shape-filters.js";
+import { inequalityRule } from "./inequality.js";
 import { deltaRule, differenceRule, geminiRule } from "./relations.js";
 import { mingleShapeRule } from "./mingle-shape.js";
+import { matchRule, mismatchRule } from "./shape-global.js";
 import { polyominoRule } from "./polyomino.js";
 import { precisionRule } from "./precision.js";
+import { rangeRule } from "./range.js";
 import { roseWindowRule } from "./rose-window.js";
 import { shapeBankRule } from "./shape-bank.js";
+import { sizeSeparationRule } from "./size-separation.js";
+import { solitudeRule } from "./solitude.js";
 
 export const LEGACY_RULE_KEYS = new Set([
   "area",
@@ -17,14 +23,6 @@ export const LEGACY_RULE_KEYS = new Set([
 ]);
 
 const readyUnimplementedRules = [
-  ["match", "Match"],
-  ["mismatch", "Mismatch"],
-  ["range", "Range"],
-  ["size_separation", "Size Separation"],
-  ["boxy", "Boxy"],
-  ["non_boxy", "Non-Boxy"],
-  ["inequality", "Inequality"],
-  ["solitude", "Solitude"],
   ["palisade", "Palisade"],
   ["bricky", "Bricky"],
   ["loopy", "Loopy"],
@@ -42,6 +40,14 @@ export const RULE_REGISTRY = Object.freeze({
   area_number: areaNumberRule,
   polyomino: polyominoRule,
   mingle_shape: mingleShapeRule,
+  match: matchRule,
+  mismatch: mismatchRule,
+  range: rangeRule,
+  solitude: solitudeRule,
+  size_separation: sizeSeparationRule,
+  boxy: boxyRule,
+  non_boxy: nonBoxyRule,
+  inequality: inequalityRule,
   ...Object.fromEntries(readyUnimplementedRules.map(([id, label]) => [id, unimplementedRule(id, label, "ready")]))
 });
 
